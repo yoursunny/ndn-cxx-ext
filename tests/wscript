@@ -1,0 +1,36 @@
+# -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+
+from waflib import Utils
+
+top = '..'
+
+def build(bld):
+    bld(features=['cxx'],
+        name='tests-base',
+        target='tests-base',
+        headers=['../src/common-pch.hpp', 'boost-test.hpp'],
+        use='ndn-cxx-ext',
+        includes='.',
+        )
+
+    unit_tests = bld(
+        target="unit-test-objects",
+        name="unit-test-objects",
+        features="cxx",
+        source=bld.path.ant_glob(['unit/**/*.cpp']),
+        use='tests-base',
+        includes='.',
+        install_path=None,
+        )
+
+    bld(features='cxx',
+        target='unit-tests-main',
+        name='unit-tests-main',
+        source=bld.path.ant_glob(['*.cpp']),
+        use='ndn-cxx-ext',
+    )
+
+    bld(features="cxx cxxprogram",
+        target="../unit-tests",
+        use="unit-test-objects unit-tests-main",
+        install_path=None)
