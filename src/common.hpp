@@ -15,8 +15,10 @@
 #define NDNCXXEXT_PROTECTED_WITH_TESTS_ELSE_PRIVATE private
 #endif
 
+#include <ndn-cxx/common.hpp>
+#include <ndn-cxx/util/scheduler.hpp>
+#include <ndn-cxx/security/key-chain.hpp>
+
 #include <boost/asio.hpp>
-#include <boost/assert.hpp>
-#include <boost/noncopyable.hpp>
 
 #endif // NDNCXXEXT_COMMON_HPP

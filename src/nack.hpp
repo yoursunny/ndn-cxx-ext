@@ -1,6 +1,7 @@
 #ifndef NDNCXXEXT_NACK_HPP
 #define NDNCXXEXT_NACK_HPP
 
+#include "common.hpp"
 #include <ndn-cxx/interest.hpp>
 
 namespace ndn {
