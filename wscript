@@ -53,3 +53,10 @@ def build(bld):
 
     if bld.env['WITH_TOOLS']:
         bld.recurse("tools")
+
+    headers = bld.path.ant_glob(['src/**/*.hpp'])
+    bld.install_files("%s/ndn-cxx-ext" % bld.env['INCLUDEDIR'], headers,
+                      relative_trick=True, cwd=bld.path.find_node('src'))
+
+    bld.install_files("%s/ndn-cxx-ext" % bld.env['INCLUDEDIR'],
+                      bld.path.find_resource('src/ndn-cxx-ext-config.hpp'))
