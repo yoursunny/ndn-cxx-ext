@@ -1,4 +1,5 @@
 #include "nack-enabled-face.hpp"
+#include "util/logger.hpp"
 #include <ndn-cxx/transport/tcp-transport.hpp>
 #include <ndn-cxx/management/nfd-control-command.hpp>
 #include <ndn-cxx/management/nfd-command-options.hpp>
@@ -26,6 +27,16 @@ NackEnabledFace::NackEnabledFace(boost::asio::io_service& io, std::string endpoi
   m_transport->connect(io, bind(&NackEnabledFace::onReceiveElement, this, _1));
 }
 
+NackEnabledFace::NackEnabledFace(boost::asio::io_service& io,
+                                 unique_ptr<Transport> transport)
+  : m_io(io)
+  , m_ioWork(io)
+  , m_scheduler(io)
+  , m_transport(std::move(transport))
+{
+  m_transport->connect(io, bind(&NackEnabledFace::onReceiveElement, this, _1));
+}
+
 NackEnabledFace::~NackEnabledFace()
 {
 }
@@ -33,7 +44,7 @@ NackEnabledFace::~NackEnabledFace()
 static inline void
 onRegisterFailure(const Name& prefix)
 {
-  throw std::runtime_error("RibRegister timeout " + prefix.toUri());
+  LOG("RibRegister timeout " << prefix);
 }
 
 void
@@ -59,6 +70,13 @@ NackEnabledFace::listen(const Name& prefix, const OnInterest& onInterest)
 void
 NackEnabledFace::reply(const Data& data)
 {
+  if (!data.getSignature()) {
+    // add fake signature
+    ndn::SignatureSha256WithRsa fakeSignature;
+    fakeSignature.setValue(ndn::dataBlock(tlv::SignatureValue,
+                                          static_cast<const uint8_t*>(nullptr), 0));
+    const_cast<Data&>(data).setSignature(fakeSignature);
+  }
   m_transport->send(data.wireEncode());
 }
 

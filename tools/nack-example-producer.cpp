@@ -9,7 +9,7 @@ onInterest(NackEnabledFace& face, int nackCode, const Name& prefix, const Intere
 {
   std::cout << "INTEREST " << interest.getName() << std::endl;
 
-  Nack nack(static_cast<Nack::NackCode>(nackCode), interest);
+  Nack nack(static_cast<NackCode>(nackCode), interest);
   face.reply(nack);
 }
 

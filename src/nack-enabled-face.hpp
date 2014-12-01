@@ -18,6 +18,10 @@ public:
   NackEnabledFace(boost::asio::io_service& io,
                   std::string endpoint = "");
 
+  explicit
+  NackEnabledFace(boost::asio::io_service& io,
+                  unique_ptr<Transport> transport);
+
   ~NackEnabledFace();
 
 public: // producer

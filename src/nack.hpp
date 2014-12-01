@@ -68,6 +68,8 @@ private:
   Interest m_interest;
 };
 
+typedef Nack::NackCode NackCode;
+
 } // namespace ndn
 
 #endif // NDNCXXEXT_NACK_HPP
