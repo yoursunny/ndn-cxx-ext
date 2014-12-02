@@ -146,10 +146,9 @@ NackEnabledFace::onReceiveElement(const Block& block)
 void
 NackEnabledFace::onReceiveInterest(const Interest& interest)
 {
-  for (std::list<Listener>::iterator it = m_listeners.begin();
-       it != m_listeners.end(); ++it) {
-    if (it->prefix.isPrefixOf(interest.getName())) {
-      it->onInterest(it->prefix, interest);
+  for (Listener& listener : m_listeners) {
+    if (listener.prefix.isPrefixOf(interest.getName())) {
+      listener.onInterest(listener.prefix, interest);
       break;
     }
   }
@@ -158,33 +157,45 @@ NackEnabledFace::onReceiveInterest(const Interest& interest)
 void
 NackEnabledFace::onReceiveData(const Data& data)
 {
+  std::list<PendingInterest> satisfied;
   m_pendingInterests.remove_if([&] (PendingInterest& pi) {
     if (!pi.interest.matchesData(data)) {
       return false;
     }
     m_scheduler.cancelEvent(pi.timeoutEvent);
     if (static_cast<bool>(pi.onData)) {
-      pi.onData(pi.interest, const_cast<Data&>(data));
+      satisfied.push_back(pi);
     }
     return true;
   });
+
+  for (auto&& pi : satisfied) {
+    pi.onData(pi.interest, const_cast<Data&>(data));
+  }
 }
 
 void
 NackEnabledFace::onReceiveNack(const Nack& nack)
 {
   const Interest& i1 = nack.getInterest();
+  std::list<PendingInterest> satisfied;
   m_pendingInterests.remove_if([&] (PendingInterest& pi) {
     const Interest& i2 = pi.interest;
     if (i1.getName() == i2.getName() && i1.getSelectors() == i2.getSelectors()) {
       m_scheduler.cancelEvent(pi.timeoutEvent);
       if (static_cast<bool>(pi.onNack)) {
-        pi.onNack(pi.interest, nack);
+        satisfied.push_back(pi);
       }
       return true;
     }
     return false;
   });
+
+  // invoke callback after PI is deleted from m_pendingInterests,
+  // otherwise if callback expresses new Interest, remove_if would be affected
+  for (auto&& pi : satisfied) {
+    pi.onNack(pi.interest, nack);
+  }
 }
 
 } // namespace ndn

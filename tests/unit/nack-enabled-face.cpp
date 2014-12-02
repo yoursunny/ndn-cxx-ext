@@ -19,21 +19,21 @@ BOOST_AUTO_TEST_CASE(RequestData)
                 bind([] { BOOST_ERROR("TIMEOUT"); }));
 
   io.poll();
-  io.poll();
   BOOST_CHECK(hasData);
 }
 
 BOOST_AUTO_TEST_CASE(RequestNack)
 {
   bool hasNack = false;
-  face2.listen("ndn:/A", [this] (const Name& prefix, const Interest& interest) { face2.reply(Nack(Nack::BUSY, interest)); });
+  face2.listen("ndn:/A", [this] (const Name& prefix, const Interest& interest) {
+    face2.reply(Nack(Nack::BUSY, interest));
+  });
 
   face1.request(Interest("ndn:/A/B"),
                 bind([] { BOOST_ERROR("NACK"); }),
                 bind([&hasNack] { hasNack = true; }),
                 bind([] { BOOST_ERROR("TIMEOUT"); }));
 
-  io.poll();
   io.poll();
   BOOST_CHECK(hasNack);
 }
