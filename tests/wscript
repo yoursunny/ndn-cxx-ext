@@ -8,7 +8,6 @@ def build(bld):
     bld(features=['cxx'],
         name='tests-base',
         target='tests-base',
-        headers=['../src/common-pch.hpp', 'boost-test.hpp'],
         use='ndn-cxx-ext',
         includes='.',
         )

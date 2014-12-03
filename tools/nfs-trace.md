@@ -7,7 +7,7 @@ Server program accepts Interests from clients, and responds according to what's 
 ## GETATTR LOOKUP
 
 Interest Name: `ndn:/NFS/{path}/./attr`  
-Exclude field: `<NameComponent>GETATTR:{%FD ctime}</NameComponent>`
+Exclude field: `<NameComponent>ATTR:{ctime}</NameComponent>`
 
 Data Name: `ndn:/NFS/{path}/./attr/{%FD ctime}`  
 Content payload: 84 octets
@@ -16,7 +16,7 @@ Content payload: 84 octets
 
 Interest Name: `ndn:/NFS/{path}`  
 ChildSelector: rightmost  
-Exclude field: `<NameComponent>READLINK:{%FD mtime}</NameComponent>`
+Exclude field: `<NameComponent>READLINK:{mtime}</NameComponent>`
 
 Data Name: `ndn:/NFS/{path}/{%FD mtime}`  
 Content payload: 160 octets
@@ -63,7 +63,7 @@ Content payload: 100 octets
 
 Interest Name: `ndn:/NFS/{path}/./dir`  
 ChildSelector: rightmost  
-Exclude field: `<NameComponent>READDIR1:{%FD mtime}:{nEntries}</NameComponent>`
+Exclude field: `<NameComponent>READDIR1:{mtime}:{nEntries}</NameComponent>`
 
 Data Name: `ndn:/NFS/{path}/./dir/{%FD mtime}/%00`  
 Content payload: {nEntries * 174} octets
