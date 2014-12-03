@@ -65,7 +65,7 @@ Interest Name: `ndn:/NFS/{path}/./dir`
 ChildSelector: rightmost  
 Exclude field: `<NameComponent>READDIR1:{mtime}:{nEntries}</NameComponent>`
 
-Data Name: `ndn:/NFS/{path}/./dir/{%FD mtime}/%00`  
+Data Name: `ndn:/NFS/{path}/./dir/{%FD mtime}/%00%00`  
 Content payload: {nEntries * 174} octets
 
 ### subsequent Interests
@@ -74,7 +74,7 @@ Interest Name: `ndn:/NFS/{path}/./dir/{%FD mtime}/{%00 seg}`
 MustBeFresh: no  
 Exclude field: `<NameComponent>READDIR2:{nEntries}</NameComponent>`
 
-Data Name: `ndn:/NFS/{path}/./dir/{%FD mtime}/%00`  
+Data Name: same  
 Content payload: {nEntries * 174} octets
 
 ## SETATTR CREATE MKDIR SYMLINK REMOVE RMDIR RENAME

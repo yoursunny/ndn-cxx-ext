@@ -38,7 +38,7 @@ class ServerAction
 {
 public:
   static ServerAction
-  fromExclude(Exclude& exclude)
+  fromExclude(const Exclude& exclude)
   {
     ServerAction sa = { SA_NONE, 0, 0 };
     if (exclude.size() != 1) {
@@ -85,7 +85,7 @@ public:
   }
 
   Exclude
-  toExclude()
+  toExclude() const
   {
     std::stringstream ss;
     ss << ServerActionVerbStrings[verb];
@@ -118,6 +118,14 @@ public:
     Exclude exclude;
     exclude.excludeOne(name::Component(reinterpret_cast<const uint8_t*>(s.data()), s.size()));
     return exclude;
+  }
+
+  /** \brief implicitly convertible to Exclude,
+   *         so that one can write interest.setExclude(ServerAction{...})
+   */
+  operator Exclude() const
+  {
+    return this->toExclude();
   }
 
 public:
