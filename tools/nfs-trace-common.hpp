@@ -134,6 +134,26 @@ public:
   size_t arg2;
 };
 
+inline Name&
+appendSignature(Name& name)
+{
+  static const name::Component SIG1("TIME");
+  static const name::Component SIG2("NONC");
+  static const name::Component SIG3("SIGNATURE-INFO-SIGNATURE-INFO-SIGNATURE-INFO");
+  static const name::Component SIG4("SIGNATURE-VALUE-SIGNATURE-VALUE-"
+                                    "SIGNATURE-VALUE-SIGNATURE-VALUE");
+  name.append(SIG1).append(SIG2).append(SIG3).append(SIG4);
+  return name;
+}
+
+inline Name
+stripSignature(const Name& name)
+{
+  return name.getPrefix(-ndn::signed_interest::MIN_LENGTH);
+}
+
+static const int AUTO_RETRY_LIMIT = 3;
+
 } // namespace nfs_trace
 } // namespace ndn
 

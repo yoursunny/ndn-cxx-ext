@@ -71,12 +71,31 @@ BOOST_AUTO_TEST_CASE(OpRead)
   BOOST_CHECK(hasData);
 }
 
-/*
 BOOST_AUTO_TEST_CASE(OpWrite)
 {
-  // TODO
+  Server server(face2, "ndn:/NFS", {"ndn:/NFS/P"});
+
+  Name request("ndn:/NFS/P/file1/..../write/%2Fclient-host%3A1417662761%3A2%3A4");
+  Interest interest(appendSignature(request));
+  interest.setExclude(ServerAction{SA_WRITE, 0, 0});
+
+  std::set<uint64_t> requestedSegments;
+  face1.listen(Name("ndn:/client-host/NFS/P/file1").appendVersion(1417662761),
+               [this, &requestedSegments] (const Name& prefix, const Interest& interest) {
+                 uint64_t segment = interest.getName().at(-1).toSegment();
+                 requestedSegments.insert(segment);
+                 face1.reply(Data(interest.getName()));
+               });
+
+  bool hasData = false;
+  face1.request(interest,
+                bind([&hasData] { hasData = true; }),
+                bind([] { BOOST_ERROR("NACK"); }),
+                bind([] { BOOST_ERROR("TIMEOUT"); }));
+  io.poll();
+  BOOST_CHECK(hasData);
+  BOOST_CHECK((requestedSegments == std::set<uint64_t>{2, 3, 4}));
 }
-*/
 
 BOOST_AUTO_TEST_CASE(OpReadDir1)
 {

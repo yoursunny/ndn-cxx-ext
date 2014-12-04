@@ -1,4 +1,4 @@
-#include "request-auto-retry.hpp"
+#include "request-segments.hpp"
 
 namespace ndn {
 namespace util {
@@ -9,7 +9,8 @@ public:
   RequestSegments(NackEnabledFace& face, const Name& baseName,
                   std::pair<uint64_t, uint64_t> segmentRange, const OnData& onData,
                   const std::function<void()>& onSuccess, const OnTimeout& onFail,
-                  const AutoRetryDecision& retryDecision);
+                  const AutoRetryDecision& retryDecision,
+                  const EditInterest& editInterest);
 
 private:
   void
@@ -43,13 +44,15 @@ private:
   std::function<void()> m_onSuccess;
   OnTimeout m_onFail;
   AutoRetryDecision m_retryDecision;
+  EditInterest m_editInterest;
 };
 
 
 RequestSegments::RequestSegments(NackEnabledFace& face, const Name& baseName,
                                  std::pair<uint64_t, uint64_t> segmentRange, const OnData& onData,
                                  const std::function<void()>& onSuccess, const OnTimeout& onFail,
-                                 const AutoRetryDecision& retryDecision)
+                                 const AutoRetryDecision& retryDecision,
+                                 const EditInterest& editInterest)
   : m_face(face)
   , m_baseName(baseName)
   , m_segmentRange(segmentRange)
@@ -58,7 +61,17 @@ RequestSegments::RequestSegments(NackEnabledFace& face, const Name& baseName,
   , m_onSuccess(onSuccess)
   , m_onFail(onFail)
   , m_retryDecision(retryDecision)
+  , m_editInterest(editInterest)
 {
+  if (!static_cast<bool>(m_onData))
+    m_onData = bind([]{});
+  if (!static_cast<bool>(m_onSuccess))
+    m_onSuccess = bind([]{});
+  if (!static_cast<bool>(m_onFail))
+    m_onFail = bind([]{});
+  if (!static_cast<bool>(m_editInterest))
+    m_editInterest = bind([]{});
+
   bool hasKnownVersion = baseName.size() >= 1 && baseName.at(-1).isVersion();
   if (hasKnownVersion) {
     m_versionedName = baseName;
@@ -142,10 +155,11 @@ void
 requestSegments(NackEnabledFace& face, const Name& baseName,
                 std::pair<uint64_t, uint64_t> segmentRange, const OnData& onData,
                 const std::function<void()>& onSuccess, const OnTimeout& onFail,
-                const AutoRetryDecision& retryDecision)
+                const AutoRetryDecision& retryDecision,
+                const EditInterest& editInterest)
 {
   auto rs = new RequestSegments(face, baseName, segmentRange,
-                                onData, onSuccess, onFail, retryDecision);
+                                onData, onSuccess, onFail, retryDecision, editInterest);
   rs->self.reset(rs);
 }
 

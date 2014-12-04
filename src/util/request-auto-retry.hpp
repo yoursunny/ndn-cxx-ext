@@ -41,7 +41,7 @@ private:
  */
 void
 requestAutoRetry(NackEnabledFace& face, const Interest& interest,
-                 const OnData& onData, const OnTimeout& onFail,
+                 const OnData& onData, const OnTimeout& onFail = nullptr,
                  const AutoRetryDecision& retryDecision = AutoRetryForever());
 
 } // namespace util

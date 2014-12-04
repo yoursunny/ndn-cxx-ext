@@ -48,6 +48,11 @@ RequestAutoRetry::RequestAutoRetry(NackEnabledFace& face, const Interest& intere
   , m_onFail(onFail)
   , m_retryDecision(retryDecision)
 {
+  if (!static_cast<bool>(m_onData))
+    m_onData = bind([]{});
+  if (!static_cast<bool>(m_onFail))
+    m_onFail = bind([]{});
+
   m_interest.setNonce(1);
   this->sendInterest();
 }
