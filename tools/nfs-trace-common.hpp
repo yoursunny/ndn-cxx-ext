@@ -34,6 +34,16 @@ static std::vector<std::string> ServerActionVerbStrings = {
   "SIMPLECMD"
 };
 
+inline ServerActionVerb
+parseServerActionVerb(const std::string& s)
+{
+  auto it = std::find(ServerActionVerbStrings.begin(), ServerActionVerbStrings.end(), s);
+  if (it != ServerActionVerbStrings.end()) {
+    return static_cast<ServerActionVerb>(it - ServerActionVerbStrings.begin());
+  }
+  return SA_NONE;
+}
+
 class ServerAction
 {
 public:
@@ -49,11 +59,7 @@ public:
     std::string s(reinterpret_cast<const char*>(comp.value()), comp.value_size());
     size_t pos = s.find(':'), pos2 = std::string::npos;
     std::string verb = (pos == std::string::npos) ? s : s.substr(0, pos);
-    for (size_t i = 0; i < ServerActionVerbStrings.size(); ++i) {
-      if (verb == ServerActionVerbStrings[i]) {
-        sa.verb = static_cast<ServerActionVerb>(i);
-      }
-    }
+    sa.verb = parseServerActionVerb(verb);
 
     switch (sa.verb) {
     case SA_WRITE:
@@ -156,6 +162,5 @@ static const int AUTO_RETRY_LIMIT = 3;
 
 } // namespace nfs_trace
 } // namespace ndn
-
 
 #endif // NDNCXXEXT_TOOLS_NFS_TRACE_COMMON_HPP
