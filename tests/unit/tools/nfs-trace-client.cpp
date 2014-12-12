@@ -23,12 +23,12 @@ BOOST_AUTO_TEST_CASE(ParseOps)
   OpsParser parser(input);
 
   auto rec1 = parser.read();
-  BOOST_CHECK_EQUAL(rec1.timestamp, NfsTimestamp(time::milliseconds(1417835239000000)));
+  BOOST_CHECK_EQUAL(rec1.timestamp, 1417835239000000);
   BOOST_CHECK_EQUAL(rec1.proc, NFS_GETATTR);
   BOOST_CHECK_EQUAL(rec1.path, "/home/u1/f1");
 
   auto rec2 = parser.read();
-  BOOST_CHECK_EQUAL(rec2.timestamp, NfsTimestamp(time::milliseconds(1417835241000003)));
+  BOOST_CHECK_EQUAL(rec2.timestamp, 1417835241000003);
   BOOST_CHECK_EQUAL(rec2.proc, NFS_READ);
   BOOST_CHECK_EQUAL(rec2.path, "/home/u3/f3");
   BOOST_CHECK_EQUAL(rec2.version, 1417835241000002);

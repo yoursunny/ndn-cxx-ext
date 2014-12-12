@@ -155,7 +155,8 @@ server_main(int argc, char* argv[])
 {
   boost::asio::io_service io;
   NackEnabledFace face(io);
-  Server server(face, "ndn:/NFS", {"ndn:/NFS/home"});
+  // TODO configure prefixes
+  Server server(face, "ndn:/NFS", {"ndn:/NFS"});
   io.run();
 
   return 0;

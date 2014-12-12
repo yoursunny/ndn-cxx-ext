@@ -42,11 +42,11 @@ Content payload: 108 octets
 
 ### server to client
 
-Interest Name: `ndn:/{client-host}/NFS/{path}/{%FD mtime}/{%00 seg}  
+Interest Name: `ndn:/{client-host}/NFS/{path}/{%FD mtime}/{%00 seg}`  
 MustBeFresh: no  
 Exclude field: `<NameComponent>FETCH</NameComponent>`
 
-Data Name: same
+Data Name: same  
 Content payload: 4096 octets
 
 ### client to server
@@ -82,5 +82,5 @@ Content payload: {nEntries * 174} octets
 Interest Name: `ndn:/NFS/{path}/./{command}/{args 32 octets}/{signature}`  
 Exclude field: `<NameComponent>SIMPLECMD</NameComponent>`
 
-Data Name: same
+Data Name: same  
 Content payload: 248 octets
