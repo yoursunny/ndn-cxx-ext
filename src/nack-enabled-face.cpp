@@ -158,7 +158,7 @@ void
 NackEnabledFace::onReceiveData(const Data& data)
 {
   std::list<PendingInterest> satisfied;
-  m_pendingInterests.remove_if([&] (PendingInterest& pi) {
+  m_pendingInterests.remove_if([&] (PendingInterest& pi) -> bool {
     if (!pi.interest.matchesData(data)) {
       return false;
     }
@@ -179,7 +179,7 @@ NackEnabledFace::onReceiveNack(const Nack& nack)
 {
   const Interest& i1 = nack.getInterest();
   std::list<PendingInterest> satisfied;
-  m_pendingInterests.remove_if([&] (PendingInterest& pi) {
+  m_pendingInterests.remove_if([&] (PendingInterest& pi) -> bool {
     const Interest& i2 = pi.interest;
     if (i1.getName() == i2.getName() && i1.getSelectors() == i2.getSelectors()) {
       m_scheduler.cancelEvent(pi.timeoutEvent);
