@@ -70,6 +70,9 @@ private:
 
 typedef Nack::NackCode NackCode;
 
+std::ostream&
+operator<<(std::ostream& os, NackCode code);
+
 } // namespace ndn
 
 #endif // NDNCXXEXT_NACK_HPP

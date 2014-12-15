@@ -33,4 +33,30 @@ Nack::decode(const Interest& packet)
   return true;
 }
 
+std::ostream&
+operator<<(std::ostream& os, NackCode code)
+{
+  switch (code) {
+  case Nack::NONE:
+    os << "NONE";
+    break;
+  case Nack::DUPLICATE:
+    os << "DUPLICATE";
+    break;
+  case Nack::GIVEUP:
+    os << "GIVEUP";
+    break;
+  case Nack::NODATA:
+    os << "NODATA";
+    break;
+  case Nack::BUSY:
+    os << "BUSY";
+    break;
+  default:
+    os << static_cast<int>(code);
+    break;
+  }
+  return os;
+}
+
 } // namespace ndn
