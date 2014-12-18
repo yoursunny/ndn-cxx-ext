@@ -1,5 +1,6 @@
 #include "nack-enabled-face.hpp"
 #include "util/logger.hpp"
+#include "transport/udp-transport.hpp"
 #include <ndn-cxx/transport/tcp-transport.hpp>
 #include <ndn-cxx/management/nfd-control-command.hpp>
 #include <ndn-cxx/management/nfd-command-options.hpp>
@@ -17,13 +18,16 @@ NackEnabledFace::NackEnabledFace(boost::asio::io_service& io, std::string endpoi
       endpoint = endpointEnv;
     }
     if (endpoint.empty()) {
-      endpoint = "127.0.0.1:6363";
+      endpoint = "tcp4://127.0.0.1:6363";
     }
   }
-  // endpoint must have form x.x.x.x:p
-  std::string host = endpoint.substr(0, endpoint.find(':'));
-  std::string port = endpoint.substr(endpoint.find(':') + 1);
-  m_transport.reset(new TcpTransport(host, port));
+  ndn::util::FaceUri faceUri(endpoint);
+  if (faceUri.getScheme() == "tcp4") {
+    m_transport.reset(new TcpTransport(faceUri.getHost(), faceUri.getPort()));
+  }
+  else if (faceUri.getScheme() == "udp4") {
+    m_transport.reset(new UdpTransport(faceUri));
+  }
   m_transport->connect(io, bind(&NackEnabledFace::onReceiveElement, this, _1));
 }
 
@@ -48,18 +52,20 @@ onRegisterFailure(const Name& prefix)
 }
 
 void
-NackEnabledFace::listen(const Name& prefix, const OnInterest& onInterest)
+NackEnabledFace::listen(const Name& prefix, const OnInterest& onInterest, bool wantRegister)
 {
   nfd::RibRegisterCommand command;
-  static const Name COMMAND_PREFIX("/localhop/nfd");
+  static const Name COMMAND_PREFIX("/localhost/nfd");
   Interest requestInterest;
 
-  // register Interest prefix
-  nfd::ControlParameters parameters;
-  parameters.setName(prefix);
-  requestInterest.setName(command.getRequestName(COMMAND_PREFIX, parameters));
-  m_keyChain.sign(requestInterest);
-  this->request(requestInterest, bind([]{}), bind([]{}), bind(&onRegisterFailure, prefix));
+  if (wantRegister) {
+    // register Interest prefix
+    nfd::ControlParameters parameters;
+    parameters.setName(prefix);
+    requestInterest.setName(command.getRequestName(COMMAND_PREFIX, parameters));
+    m_keyChain.sign(requestInterest);
+    this->request(requestInterest, bind([]{}), bind([]{}), bind(&onRegisterFailure, prefix));
+  }
 
   m_listeners.push_back(Listener());
   Listener& listener = m_listeners.back();

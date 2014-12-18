@@ -26,7 +26,7 @@ public:
 
 public: // producer
   void
-  listen(const Name& prefix, const OnInterest& onInterest);
+  listen(const Name& prefix, const OnInterest& onInterest, bool wantRegister = true);
 
   void
   reply(const Data& data);
