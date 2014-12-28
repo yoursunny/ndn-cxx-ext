@@ -94,37 +94,30 @@ NackEnabledFace::reply(const Nack& nack)
 }
 
 void
-NackEnabledFace::onInterestTimeout(int sequence)
+NackEnabledFace::onInterestTimeout(PendingInterestList::iterator it)
 {
-  for (std::list<PendingInterest>::iterator it = m_pendingInterests.begin();
-       it != m_pendingInterests.end(); ++it) {
-    if (it->sequence == sequence) {
-      m_pendingInterests.erase(it);
-      return;
-    }
-  }
-  BOOST_ASSERT(false);
+  it->onTimeout(it->interest);
+  m_pendingInterests.erase(it);
 }
 
 void
 NackEnabledFace::request(const Interest& interest, const OnData& onData,
                          const OnNack& onNack, const OnTimeout& onTimeout)
 {
-  static int sequence = 0;
-
-  m_pendingInterests.push_back(PendingInterest());
-  PendingInterest& pi = m_pendingInterests.back();
-  pi.sequence = ++sequence;
+  PendingInterestList::iterator it = m_pendingInterests.insert(m_pendingInterests.end(),
+                                                               PendingInterest());
+  PendingInterest& pi = *it;
   pi.interest = interest;
   pi.onData = onData;
   pi.onNack = onNack;
+  pi.onTimeout = onTimeout;
 
   time::milliseconds timeout = interest.getInterestLifetime();
   if (timeout < time::milliseconds::zero()) {
     timeout = time::duration_cast<time::milliseconds>(DEFAULT_INTEREST_LIFETIME);
   }
   pi.timeoutEvent = m_scheduler.scheduleEvent(timeout,
-                    bind(&NackEnabledFace::onInterestTimeout, this, pi.sequence));
+                    bind(&NackEnabledFace::onInterestTimeout, this, it));
 
   m_transport->send(interest.wireEncode());
 }
@@ -163,7 +156,7 @@ NackEnabledFace::onReceiveInterest(const Interest& interest)
 void
 NackEnabledFace::onReceiveData(const Data& data)
 {
-  std::list<PendingInterest> satisfied;
+  PendingInterestList satisfied;
   m_pendingInterests.remove_if([&] (PendingInterest& pi) -> bool {
     if (!pi.interest.matchesData(data)) {
       return false;
@@ -184,7 +177,7 @@ void
 NackEnabledFace::onReceiveNack(const Nack& nack)
 {
   const Interest& i1 = nack.getInterest();
-  std::list<PendingInterest> satisfied;
+  PendingInterestList satisfied;
   m_pendingInterests.remove_if([&] (PendingInterest& pi) -> bool {
     const Interest& i2 = pi.interest;
     if (i1.getName() == i2.getName() && i1.getSelectors() == i2.getSelectors()) {

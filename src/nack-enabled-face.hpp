@@ -40,8 +40,25 @@ public: // consumer
           const OnNack& onNack, const OnTimeout& onTimeout);
 
 private:
+  struct PendingInterest
+  {
+    Interest interest;
+    OnData onData;
+    OnNack onNack;
+    OnTimeout onTimeout;
+    EventId timeoutEvent;
+  };
+  typedef std::list<PendingInterest> PendingInterestList;
+
+  struct Listener
+  {
+    Name prefix;
+    OnInterest onInterest;
+  };
+  typedef std::list<Listener> ListenerList;
+
   void
-  onInterestTimeout(int sequence);
+  onInterestTimeout(PendingInterestList::iterator it);
 
   void
   onReceiveElement(const Block& block);
@@ -62,23 +79,8 @@ private:
   unique_ptr<Transport> m_transport;
   KeyChain m_keyChain;
 
-  struct PendingInterest
-  {
-    int sequence;
-    Interest interest;
-    OnData onData;
-    OnNack onNack;
-    OnTimeout onTimeout;
-    EventId timeoutEvent;
-  };
-  std::list<PendingInterest> m_pendingInterests;
-
-  struct Listener
-  {
-    Name prefix;
-    OnInterest onInterest;
-  };
-  std::list<Listener> m_listeners;
+  PendingInterestList m_pendingInterests;
+  ListenerList m_listeners;
 };
 
 } // namespace ndn

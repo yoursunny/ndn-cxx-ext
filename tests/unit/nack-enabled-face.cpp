@@ -30,12 +30,30 @@ BOOST_AUTO_TEST_CASE(RequestNack)
   });
 
   face1.request(Interest("ndn:/A/B"),
-                bind([] { BOOST_ERROR("NACK"); }),
+                bind([] { BOOST_ERROR("DATA"); }),
                 bind([&hasNack] { hasNack = true; }),
                 bind([] { BOOST_ERROR("TIMEOUT"); }));
 
   io.poll();
   BOOST_CHECK(hasNack);
+}
+
+BOOST_AUTO_TEST_CASE(RequestTimeout)
+{
+  Interest interest("ndn:/A/B");
+  interest.setInterestLifetime(time::milliseconds(10));
+
+  bool hasTimeout = false;
+  face1.request(interest,
+                bind([] { BOOST_ERROR("DATA"); }),
+                bind([] { BOOST_ERROR("NACK"); }),
+                bind([&hasTimeout] { hasTimeout = true; }));
+
+  boost::asio::deadline_timer t(io, boost::posix_time::milliseconds(20));
+  t.async_wait([&io] (const boost::system::error_code&) { io.stop(); });
+
+  io.run();
+  BOOST_CHECK(hasTimeout);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
