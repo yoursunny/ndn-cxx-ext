@@ -118,6 +118,7 @@ void
 RequestSegments::sendInterest()
 {
   m_interest = Interest(Name(m_versionedName).appendSegment(m_currentSegment));
+  m_editInterest(m_interest);
 
   requestAutoRetry(m_face, m_interest,
                    bind(&RequestSegments::handleData, this, _2),
