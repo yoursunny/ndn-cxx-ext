@@ -1,6 +1,8 @@
 #include "nack-enabled-face.hpp"
 #include "nfs-trace-common.hpp"
 #include "util/request-segments.hpp"
+#include <fstream>
+#include <unordered_set>
 
 namespace ndn {
 namespace nfs_trace {
@@ -17,6 +19,9 @@ public:
   Server(NackEnabledFace& face, const Name& prefix, const std::vector<Name>& prefixes);
 
 private:
+  bool
+  isServed(const Name& name) const;
+
   void
   processInterest(const Interest& interest);
 
@@ -37,24 +42,38 @@ private:
 private:
   NackEnabledFace& m_face;
   const Name m_prefix;
-  const std::vector<Name> m_prefixes;
+  //const std::vector<Name> m_prefixes;
+  const std::unordered_set<Name> m_prefixes;
   uint8_t m_payloadBuffer[ndn::MAX_NDN_PACKET_SIZE];
 };
 
 Server::Server(NackEnabledFace& face, const Name& prefix, const std::vector<Name>& prefixes)
   : m_face(face)
   , m_prefix(prefix)
-  , m_prefixes(prefixes)
+  //, m_prefixes(prefixes)
+  , m_prefixes(prefixes.begin(), prefixes.end())
 {
   std::fill_n(m_payloadBuffer, sizeof(m_payloadBuffer), 0xBB);
   m_face.listen(m_prefix, bind(&Server::processInterest, this, _2));
 }
 
+bool
+Server::isServed(const Name& name) const
+{
+  //return std::any_of(m_prefixes.begin(), m_prefixes.end(),
+  //                   bind(&Name::isPrefixOf, _1, name))
+  for (size_t i = 0; i < name.size(); ++i) {
+    if (m_prefixes.count(name.getPrefix(i)) > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void
 Server::processInterest(const Interest& interest)
 {
-  if (!std::any_of(m_prefixes.begin(), m_prefixes.end(),
-                   bind(&Name::isPrefixOf, _1, interest.getName()))) {
+  if (!this->isServed(interest.getName())) {
     // not served by this server
     m_face.reply(Nack(Nack::NODATA, interest));
     return;
@@ -153,10 +172,18 @@ Server::writeFetch(const Interest& interest)
 int
 server_main(int argc, char* argv[])
 {
+  // argv: paths-file
+
+  std::vector<Name> prefixes;
+  std::ifstream pathsFile(argv[1]);
+  std::string path;
+  while (pathsFile >> path) {
+    prefixes.push_back("ndn:/NFS" + path);
+  }
+
   boost::asio::io_service io;
   NackEnabledFace face(io);
-  // TODO configure prefixes
-  Server server(face, "ndn:/NFS", {"ndn:/NFS"});
+  Server server(face, "ndn:/NFS", prefixes);
   io.run();
 
   return 0;

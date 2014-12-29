@@ -1,13 +1,13 @@
 #include "nack-enabled-face.hpp"
 #include "nfs-trace-common.hpp"
 #include <unordered_map>
-#include <ndn-cxx/util/event-emitter.hpp>
+#include <ndn-cxx/util/signal.hpp>
 #include "util/request-segments.hpp"
 
 namespace ndn {
 namespace nfs_trace {
 
-using ndn::util::EventEmitter;
+using ndn::util::signal::Signal;
 using ndn::util::requestSegments;
 using ndn::util::AutoRetryLimited;
 
@@ -121,7 +121,7 @@ OpsParser::read()
 {
   while (true) {
     NfsOp op = {NfsTimestamp(), NFS_NONE, "", 0, 0, 0};
-    if (!m_is) {
+    if (m_is.eof()) {
       return op;
     }
 
@@ -178,6 +178,9 @@ public:
    */
   Client(NackEnabledFace& face, const Name& serverPrefix, const Name& clientHost);
 
+  bool
+  isIgnored(const NfsOp& op) const;
+
   void
   startOp(const NfsOp& op);
 
@@ -213,6 +216,7 @@ private: // WRITE
     EmulationTime start;
     NfsOp op;
     EmulationTime lastFetch;
+    bool hasWriteReply;
     std::set<uint64_t> fetchedSegments;
   };
 
@@ -231,8 +235,8 @@ private: // WRITE
   expireWrites();
 
 public:
-  EventEmitter<NfsOp, EmulationTime, EmulationTime> opSuccess;
-  EventEmitter<NfsOp, EmulationTime, EmulationTime> opFailure;
+  Signal<Client, NfsOp, EmulationTime, EmulationTime> opSuccess;
+  Signal<Client, NfsOp, EmulationTime, EmulationTime> opFailure;
 
 private:
   NackEnabledFace& m_face;
@@ -245,7 +249,7 @@ private:
   static const int DIR_PER_SEGMENT = 32;
   static const EmulationClock::Duration FETCH_MAX_GAP;
 };
-const EmulationClock::Duration Client::FETCH_MAX_GAP = time::seconds(4);
+const EmulationClock::Duration Client::FETCH_MAX_GAP = time::seconds(30);
 
 Client::Client(NackEnabledFace& face, const Name& serverPrefix, const Name& clientHost)
   : m_face(face)
@@ -254,7 +258,18 @@ Client::Client(NackEnabledFace& face, const Name& serverPrefix, const Name& clie
   , m_clientPrefix(Name(clientHost).append("NFS"))
 {
   std::fill_n(m_payloadBuffer, sizeof(m_payloadBuffer), 0xBB);
-  m_face.listen(m_clientPrefix, bind(&Client::processIncomingInterest, this, _2));
+  m_face.listen(m_clientPrefix, bind(&Client::processIncomingInterest, this, _2), false);
+}
+
+bool
+Client::isIgnored(const NfsOp& op) const
+{
+  switch (op.proc) {
+  case NFS_ACCESS:
+    return true;
+  default:
+    return false;
+  }
 }
 
 void
@@ -380,7 +395,7 @@ Client::startReadDir(const NfsOp& op)
                   bind([=] { this->opSuccess(op, start, EmulationClock::now()); }),
                   bind([=] { this->opFailure(op, start, EmulationClock::now()); }),
                   AutoRetryLimited(AUTO_RETRY_LIMIT),
-                  [&] (Interest& interest) {
+                  [=] (Interest& interest) {
                     const Name& interestName = interest.getName();
                     if (interestName.at(-1).toSegment() == 0) {
                       interest.setName(interestName.getPrefix(-2));
@@ -399,24 +414,37 @@ Client::startWrite(const NfsOp& op)
   Name fetchPrefix(m_clientPrefix);
   fetchPrefix.append(Name(op.path));
   fetchPrefix.appendVersion(op.version);
+  while (m_writes.count(fetchPrefix) > 0) {
+    // simultaneous WRITEs on same path will affect each other,
+    // thus version is incremented
+    fetchPrefix = fetchPrefix.getSuccessor();
+  }
+  uint64_t version = fetchPrefix.at(-1).toVersion();
+
   WriteProcess& wp = m_writes[fetchPrefix];
   wp.start = EmulationClock::now();
   wp.op = op;
   wp.lastFetch = EmulationTime::max();
+  wp.hasWriteReply = false;
 
   std::stringstream params;
-  params << m_clientHost << ':' << op.version << ':'
+  params << m_clientHost << ':' << version << ':'
          << op.segStart << ':' << (op.segStart + op.nSegments - 1);
   Interest writeCmd = this->makeCommand(op.path,
       {name::Component("."), name::Component("write"), name::Component(params.str())},
-      ServerAction{SA_WRITE, op.version, 0}, true);
+      ServerAction{SA_WRITE, version, 0}, true);
 
   requestAutoRetry(m_face, writeCmd,
                    bind([this, fetchPrefix] {
-                     m_writes[fetchPrefix].lastFetch = EmulationClock::now();
+                     WriteProcess& wp = m_writes.at(fetchPrefix);
+                     wp.lastFetch = EmulationClock::now();
+                     wp.hasWriteReply = true;
+                     if (wp.hasWriteReply && wp.fetchedSegments.size() == wp.op.nSegments) {
+                       this->finishWrite(fetchPrefix);
+                     }
                    }),
                    bind([this, fetchPrefix] {
-                     WriteProcess& wp = m_writes[fetchPrefix];
+                     WriteProcess& wp = m_writes.at(fetchPrefix);
                      this->opFailure(wp.op, wp.start, EmulationClock::now());
                      m_writes.erase(fetchPrefix);
                    }),
@@ -430,7 +458,8 @@ Client::processFetchInterest(const Interest& interest, const ServerAction& sa)
   auto it = m_writes.find(fetchPrefix);
   if (it == m_writes.end()) {
     // not a WRITE in progress
-    // TODO nack
+    Nack nack(Nack::NODATA, interest);
+    m_face.reply(nack);
     return;
   }
 
@@ -442,7 +471,7 @@ Client::processFetchInterest(const Interest& interest, const ServerAction& sa)
   data.setContent(m_payloadBuffer, SEGMENT_SIZE);
   m_face.reply(data);
 
-  if (wp.fetchedSegments.size() == wp.op.nSegments) {
+  if (wp.hasWriteReply && wp.fetchedSegments.size() == wp.op.nSegments) {
     this->finishWrite(fetchPrefix);
   }
 }
@@ -450,8 +479,14 @@ Client::processFetchInterest(const Interest& interest, const ServerAction& sa)
 void
 Client::finishWrite(const Name& fetchPrefix)
 {
-  WriteProcess& wp = m_writes.at(fetchPrefix);
-  const NfsOp& op = wp.op;
+  auto it = m_writes.find(fetchPrefix);
+  BOOST_ASSERT(it != m_writes.end());
+  WriteProcess& wp = it->second;
+  BOOST_ASSERT(wp.hasWriteReply && wp.fetchedSegments.size() == wp.op.nSegments);
+
+  NfsOp op = wp.op;
+  EmulationTime wpStart = wp.start;
+  m_writes.erase(it);
 
   std::stringstream params;
   params << m_clientHost << ':' << op.version << ':'
@@ -461,20 +496,8 @@ Client::finishWrite(const Name& fetchPrefix)
       ServerAction{SA_COMMIT, op.version, 0}, true);
 
   requestAutoRetry(m_face, commitCmd,
-                   bind([this, fetchPrefix] {
-                     auto it = m_writes.find(fetchPrefix);
-                     BOOST_ASSERT(it != m_writes.end());
-                     WriteProcess& wp = it->second;
-                     this->opSuccess(wp.op, wp.start, EmulationClock::now());
-                     m_writes.erase(it);
-                   }),
-                   bind([this, fetchPrefix] {
-                     auto it = m_writes.find(fetchPrefix);
-                     BOOST_ASSERT(it != m_writes.end());
-                     WriteProcess& wp = it->second;
-                     this->opFailure(wp.op, wp.start, EmulationClock::now());
-                     m_writes.erase(it);
-                   }),
+                   bind([=] { this->opSuccess(op, wpStart, EmulationClock::now()); }),
+                   bind([=] { this->opFailure(op, wpStart, EmulationClock::now()); }),
                    AutoRetryLimited(AUTO_RETRY_LIMIT));
 }
 
@@ -484,6 +507,8 @@ Client::expireWrites()
   EmulationTime minLastFetch = EmulationClock::now() - FETCH_MAX_GAP;
   for (auto it = m_writes.begin(); it != m_writes.end();) {
     if (it->second.lastFetch < minLastFetch) {
+      WriteProcess& wp = it->second;
+      this->opFailure(wp.op, wp.start, EmulationClock::now());
       it = m_writes.erase(it);
     }
     else {
@@ -501,13 +526,11 @@ public:
                   boost::asio::io_service& io, std::ostream& log);
 
   /** \brief start replaying the trace
-   *  \param now synchronize NfsTimestamp now with EmulationClock::now()
-   *  \param timeFactor >1 replays faster, <1 replays slower
    */
   void
-  start(NfsTimestamp now, float timeFactor = 1.0);
+  start();
 
-  EventEmitter<> onFinish;
+  Signal<EmulationRunner> onFinish;
 
 private:
   EmulationTime
@@ -537,11 +560,10 @@ private:
 
   bool m_isStarted;
   EmulationTime m_startEmulationTime;
-  NfsTimestamp m_startNfsTimestamp;
-  double m_timeFactor;
 
   NfsOp m_nextOp;
-
+  bool m_isInputEnded;
+  int m_pendings;
 };
 const EmulationClock::Duration EmulationRunner::CLEANUP_INTERVAL = time::seconds(10);
 const EmulationClock::Duration EmulationRunner::WAIT_AFTER_LAST_OP = time::seconds(20);
@@ -554,34 +576,42 @@ EmulationRunner::EmulationRunner(OpsParser& trace, Client& client,
   , m_log(log)
   , m_scheduler(io)
   , m_isStarted(false)
+  , m_isInputEnded(false)
+  , m_pendings(0)
 {
-  m_client.opSuccess += [this] (const NfsOp& op,
-                                const EmulationTime& start, const EmulationTime& end) {
+  m_client.opSuccess.connect([this] (const NfsOp& op,
+                                     const EmulationTime& start, const EmulationTime& end) {
+    BOOST_ASSERT(op.proc != NFS_NONE);
     m_log << op << ','
           << "SUCCESS" << ','
           << time::duration_cast<time::microseconds>(start.time_since_epoch()).count() << ','
           << time::duration_cast<time::microseconds>(end.time_since_epoch()).count() << ','
           << time::duration_cast<time::microseconds>(end - start).count() << std::endl;
-  };
-  m_client.opFailure += [this] (const NfsOp& op,
-                                const EmulationTime& start, const EmulationTime& end) {
+    if (--m_pendings == 0 && m_isInputEnded) {
+      this->finish();
+    }
+  });
+  m_client.opFailure.connect([this] (const NfsOp& op,
+                                     const EmulationTime& start, const EmulationTime& end) {
+    BOOST_ASSERT(op.proc != NFS_NONE);
     m_log << op << ','
           << "FAILURE" << ','
           << time::duration_cast<time::microseconds>(start.time_since_epoch()).count() << ','
           << time::duration_cast<time::microseconds>(end.time_since_epoch()).count() << ','
           << time::duration_cast<time::microseconds>(end - start).count() << std::endl;
-  };
+    if (--m_pendings == 0 && m_isInputEnded) {
+      this->finish();
+    }
+  });
 }
 
 void
-EmulationRunner::start(NfsTimestamp now, float timeFactor)
+EmulationRunner::start()
 {
   BOOST_ASSERT(!m_isStarted);
   m_isStarted = true;
 
   m_startEmulationTime = EmulationClock::now();
-  m_startNfsTimestamp = now;
-  m_timeFactor = timeFactor;
 
   this->periodicalCleanupThenReschedule();
 
@@ -591,25 +621,46 @@ EmulationRunner::start(NfsTimestamp now, float timeFactor)
 EmulationTime
 EmulationRunner::computeEmulationTime(NfsTimestamp nfsTime) const
 {
-  double microsecondsFromStart = (nfsTime - m_startNfsTimestamp) / m_timeFactor;
-  return m_startEmulationTime +
-         time::microseconds(static_cast<time::microseconds::rep>(microsecondsFromStart));
+  return m_startEmulationTime + time::microseconds(nfsTime);
 }
 
 void
 EmulationRunner::run()
 {
-  m_nextOp = m_trace.read();
-  if (m_nextOp.proc == NFS_NONE) {
-    this->finish();
-  }
+  while (true) {
+    m_nextOp = m_trace.read();
+    if (m_nextOp.proc == NFS_NONE) {
+      m_isInputEnded = true;
+      if (m_pendings == 0) {
+        this->finish();
+      }
+      return;
+    }
+    if (m_client.isIgnored(m_nextOp)) {
+      continue;
+    }
 
-  EmulationClock::Duration slack = this->computeEmulationTime(m_nextOp.timestamp) -
-                                   EmulationClock::now();
-  m_scheduler.scheduleEvent(slack, [this] {
-    m_client.startOp(m_nextOp);
-    this->run();
-  });
+    EmulationClock::Duration slack = this->computeEmulationTime(m_nextOp.timestamp) -
+                                     EmulationClock::now();
+    ++m_pendings;
+
+    m_log << m_nextOp << ','
+          << "SCHED" << ','
+          << "slack=" << time::duration_cast<time::microseconds>(slack).count() << ','
+          << "pendings=" << m_pendings << ','
+          << std::endl;
+
+    if (slack > EmulationClock::Duration::zero()) {
+      m_scheduler.scheduleEvent(slack, [this] {
+        m_client.startOp(m_nextOp);
+        this->run();
+      });
+      return;
+    }
+    else {
+      m_client.startOp(m_nextOp);
+    }
+  }
 }
 
 void
@@ -633,16 +684,18 @@ EmulationRunner::periodicalCleanupThenReschedule()
 int
 client_main(int argc, char* argv[])
 {
+  // argv: client-name
+
   boost::asio::io_service io;
   NackEnabledFace face(io);
   OpsParser trace(std::cin);
-  Client client(face, "ndn:/NFS", std::string("ndn:/") + argv[2]);
+  Client client(face, "ndn:/NFS", std::string("ndn:/") + argv[1]);
 
   EmulationRunner runner(trace, client, io, std::cout);
-  runner.onFinish += [&] {
+  runner.onFinish.connect([&] {
     io.stop();
-  };
-  runner.start(boost::lexical_cast<uint64_t>(argv[1]));
+  });
+  runner.start();
 
   io.run();
   return 0;

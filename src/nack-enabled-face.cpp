@@ -96,7 +96,9 @@ NackEnabledFace::reply(const Nack& nack)
 void
 NackEnabledFace::onInterestTimeout(PendingInterestList::iterator it)
 {
-  it->onTimeout(it->interest);
+  if (it->onTimeout) {
+    it->onTimeout(it->interest);
+  }
   m_pendingInterests.erase(it);
 }
 
