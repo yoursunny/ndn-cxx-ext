@@ -104,7 +104,8 @@ NackEnabledFace::onInterestTimeout(PendingInterestList::iterator it)
 
 void
 NackEnabledFace::request(const Interest& interest, const OnData& onData,
-                         const OnNack& onNack, const OnTimeout& onTimeout)
+                         const OnNack& onNack, const OnTimeout& onTimeout,
+                         const time::milliseconds& timeoutOverride)
 {
   PendingInterestList::iterator it = m_pendingInterests.insert(m_pendingInterests.end(),
                                                                PendingInterest());
@@ -117,6 +118,11 @@ NackEnabledFace::request(const Interest& interest, const OnData& onData,
   time::milliseconds timeout = interest.getInterestLifetime();
   if (timeout < time::milliseconds::zero()) {
     timeout = time::duration_cast<time::milliseconds>(DEFAULT_INTEREST_LIFETIME);
+  }
+  if (timeoutOverride > time::milliseconds::zero() && timeoutOverride < timeout) {
+    // XXX hack! allow library and network use different timeout,
+    //     so that caller doesn't have to manage retx
+    timeout = timeoutOverride;
   }
   pi.timeoutEvent = m_scheduler.scheduleEvent(timeout,
                     bind(&NackEnabledFace::onInterestTimeout, this, it));

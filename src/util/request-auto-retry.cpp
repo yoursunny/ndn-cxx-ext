@@ -8,7 +8,8 @@ class RequestAutoRetry
 public:
   RequestAutoRetry(NackEnabledFace& face, const Interest& interest,
                    const OnData& onData, const OnTimeout& onFail,
-                   const AutoRetryDecision& retryDecision);
+                   const AutoRetryDecision& retryDecision,
+                   const time::milliseconds& retxInterval);
 
 private:
   void
@@ -35,18 +36,21 @@ private:
   OnData m_onData;
   OnTimeout m_onFail;
   AutoRetryDecision m_retryDecision;
+  time::milliseconds m_retxInterval;
 };
 
 
 RequestAutoRetry::RequestAutoRetry(NackEnabledFace& face, const Interest& interest,
                                    const OnData& onData, const OnTimeout& onFail,
-                                   const AutoRetryDecision& retryDecision)
+                                   const AutoRetryDecision& retryDecision,
+                                   const time::milliseconds& retxInterval)
   : m_face(face)
   , m_nSent(0)
   , m_interest(interest)
   , m_onData(onData)
   , m_onFail(onFail)
   , m_retryDecision(retryDecision)
+  , m_retxInterval(retxInterval)
 {
   if (!static_cast<bool>(m_onData))
     m_onData = bind([]{});
@@ -67,7 +71,8 @@ RequestAutoRetry::sendInterest()
   m_face.request(m_interest,
                  bind(&RequestAutoRetry::handleData, this, _2),
                  bind(&RequestAutoRetry::handleNack, this, _2),
-                 bind(&RequestAutoRetry::handleTimeout, this));
+                 bind(&RequestAutoRetry::handleTimeout, this),
+                 m_retxInterval);
 }
 
 void
@@ -104,9 +109,10 @@ RequestAutoRetry::handleTimeout()
 void
 requestAutoRetry(NackEnabledFace& face, const Interest& interest,
                  const OnData& onData, const OnTimeout& onFail,
-                 const AutoRetryDecision& retryDecision)
+                 const AutoRetryDecision& retryDecision,
+                 const time::milliseconds& retxInterval)
 {
-  auto rar = new RequestAutoRetry(face, interest, onData, onFail, retryDecision);
+  auto rar = new RequestAutoRetry(face, interest, onData, onFail, retryDecision, retxInterval);
   rar->self.reset(rar);
 }
 

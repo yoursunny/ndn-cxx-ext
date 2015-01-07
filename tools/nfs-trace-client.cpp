@@ -346,7 +346,7 @@ Client::sendCommand(const NfsOp& op, const std::vector<name::Component>& appendT
   requestAutoRetry(m_face, interest,
                    bind([=] { this->opSuccess(op, start, EmulationClock::now()); }),
                    bind([=] { this->opFailure(op, start, EmulationClock::now()); }),
-                   AutoRetryLimited(AUTO_RETRY_LIMIT));
+                   AutoRetryLimited(AUTO_RETRY_LIMIT), AUTO_RETRY_RETX_INTERVAL);
 }
 
 void
@@ -374,7 +374,7 @@ Client::startRead(const NfsOp& op)
                   nullptr,
                   bind([=] { this->opSuccess(op, start, EmulationClock::now()); }),
                   bind([=] { this->opFailure(op, start, EmulationClock::now()); }),
-                  AutoRetryLimited(AUTO_RETRY_LIMIT),
+                  AutoRetryLimited(AUTO_RETRY_LIMIT), AUTO_RETRY_RETX_INTERVAL,
                   [] (Interest& interest) {
                     interest.setExclude(ServerAction{SA_READ, 0, SEGMENT_SIZE});
                   });
@@ -394,7 +394,7 @@ Client::startReadDir(const NfsOp& op)
                   nullptr,
                   bind([=] { this->opSuccess(op, start, EmulationClock::now()); }),
                   bind([=] { this->opFailure(op, start, EmulationClock::now()); }),
-                  AutoRetryLimited(AUTO_RETRY_LIMIT),
+                  AutoRetryLimited(AUTO_RETRY_LIMIT), AUTO_RETRY_RETX_INTERVAL,
                   [=] (Interest& interest) {
                     const Name& interestName = interest.getName();
                     if (interestName.at(-1).toSegment() == 0) {
@@ -448,7 +448,7 @@ Client::startWrite(const NfsOp& op)
                      this->opFailure(wp.op, wp.start, EmulationClock::now());
                      m_writes.erase(fetchPrefix);
                    }),
-                   AutoRetryLimited(AUTO_RETRY_LIMIT));
+                   AutoRetryLimited(AUTO_RETRY_LIMIT), AUTO_RETRY_RETX_INTERVAL);
 }
 
 void
@@ -498,7 +498,7 @@ Client::finishWrite(const Name& fetchPrefix)
   requestAutoRetry(m_face, commitCmd,
                    bind([=] { this->opSuccess(op, wpStart, EmulationClock::now()); }),
                    bind([=] { this->opFailure(op, wpStart, EmulationClock::now()); }),
-                   AutoRetryLimited(AUTO_RETRY_LIMIT));
+                   AutoRetryLimited(AUTO_RETRY_LIMIT), AUTO_RETRY_RETX_INTERVAL);
 }
 
 void

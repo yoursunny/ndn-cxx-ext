@@ -10,6 +10,7 @@ public:
                   std::pair<uint64_t, uint64_t> segmentRange, const OnData& onData,
                   const std::function<void()>& onSuccess, const OnTimeout& onFail,
                   const AutoRetryDecision& retryDecision,
+                  const time::milliseconds& retxInterval,
                   const EditInterest& editInterest);
 
 private:
@@ -44,6 +45,7 @@ private:
   std::function<void()> m_onSuccess;
   OnTimeout m_onFail;
   AutoRetryDecision m_retryDecision;
+  time::milliseconds m_retxInterval;
   EditInterest m_editInterest;
 };
 
@@ -52,6 +54,7 @@ RequestSegments::RequestSegments(NackEnabledFace& face, const Name& baseName,
                                  std::pair<uint64_t, uint64_t> segmentRange, const OnData& onData,
                                  const std::function<void()>& onSuccess, const OnTimeout& onFail,
                                  const AutoRetryDecision& retryDecision,
+                                 const time::milliseconds& retxInterval,
                                  const EditInterest& editInterest)
   : m_face(face)
   , m_baseName(baseName)
@@ -61,6 +64,7 @@ RequestSegments::RequestSegments(NackEnabledFace& face, const Name& baseName,
   , m_onSuccess(onSuccess)
   , m_onFail(onFail)
   , m_retryDecision(retryDecision)
+  , m_retxInterval(retxInterval)
   , m_editInterest(editInterest)
 {
   if (!static_cast<bool>(m_onData))
@@ -91,7 +95,7 @@ RequestSegments::sendVersionDiscoveryInterest()
   requestAutoRetry(m_face, m_interest,
                    bind(&RequestSegments::handleVersionDiscoveryData, this, _2),
                    bind(&RequestSegments::handleFail, this),
-                   m_retryDecision);
+                   m_retryDecision, m_retxInterval);
 }
 
 void
@@ -123,7 +127,7 @@ RequestSegments::sendInterest()
   requestAutoRetry(m_face, m_interest,
                    bind(&RequestSegments::handleData, this, _2),
                    bind(&RequestSegments::handleFail, this),
-                   m_retryDecision);
+                   m_retryDecision, m_retxInterval);
 }
 
 void
@@ -157,10 +161,12 @@ requestSegments(NackEnabledFace& face, const Name& baseName,
                 std::pair<uint64_t, uint64_t> segmentRange, const OnData& onData,
                 const std::function<void()>& onSuccess, const OnTimeout& onFail,
                 const AutoRetryDecision& retryDecision,
+                const time::milliseconds& retxInterval,
                 const EditInterest& editInterest)
 {
   auto rs = new RequestSegments(face, baseName, segmentRange,
-                                onData, onSuccess, onFail, retryDecision, editInterest);
+                                onData, onSuccess, onFail,
+                                retryDecision, retxInterval, editInterest);
   rs->self.reset(rs);
 }
 

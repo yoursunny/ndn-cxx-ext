@@ -159,6 +159,7 @@ stripSignature(const Name& name)
 }
 
 static const int AUTO_RETRY_LIMIT = 3;
+static const time::milliseconds AUTO_RETRY_RETX_INTERVAL(2000);
 
 } // namespace nfs_trace
 } // namespace ndn

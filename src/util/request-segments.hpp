@@ -24,6 +24,7 @@ requestSegments(NackEnabledFace& face, const Name& baseName,
                 const std::function<void()>& onSuccess = nullptr,
                 const OnTimeout& onFail = nullptr,
                 const AutoRetryDecision& retryDecision = AutoRetryForever(),
+                const time::milliseconds& retxInterval = time::milliseconds::min(),
                 const EditInterest& editInterest = nullptr);
 
 } // namespace util

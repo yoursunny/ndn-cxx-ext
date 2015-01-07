@@ -165,7 +165,7 @@ Server::writeFetch(const Interest& interest)
 
   requestSegments(m_face, Name(client).append("NFS").append(path).appendVersion(mtime),
                   {first, last}, nullptr, nullptr, nullptr,
-                  AutoRetryLimited(AUTO_RETRY_LIMIT),
+                  AutoRetryLimited(AUTO_RETRY_LIMIT), AUTO_RETRY_RETX_INTERVAL,
                   [] (Interest& interest) { interest.setExclude(ServerAction{SA_FETCH, 0, 0}); });
 }
 

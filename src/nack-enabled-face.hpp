@@ -37,7 +37,8 @@ public: // producer
 public: // consumer
   void
   request(const Interest& interest, const OnData& onData,
-          const OnNack& onNack, const OnTimeout& onTimeout);
+          const OnNack& onNack, const OnTimeout& onTimeout,
+          const time::milliseconds& timeoutOverride = time::milliseconds::min());
 
 private:
   struct PendingInterest
