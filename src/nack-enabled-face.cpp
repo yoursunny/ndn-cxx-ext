@@ -8,7 +8,8 @@
 namespace ndn {
 
 NackEnabledFace::NackEnabledFace(boost::asio::io_service& io, std::string endpoint)
-  : m_io(io)
+  : shouldNackUnmatchedInterest(false)
+  , m_io(io)
   , m_ioWork(io)
   , m_scheduler(io)
 {
@@ -156,8 +157,11 @@ NackEnabledFace::onReceiveInterest(const Interest& interest)
   for (Listener& listener : m_listeners) {
     if (listener.prefix.isPrefixOf(interest.getName())) {
       listener.onInterest(listener.prefix, interest);
-      break;
+      return;
     }
+  }
+  if (this->shouldNackUnmatchedInterest) {
+    this->reply(Nack(Nack::NODATA, interest));
   }
 }
 

@@ -183,6 +183,7 @@ server_main(int argc, char* argv[])
 
   boost::asio::io_service io;
   NackEnabledFace face(io);
+  face.shouldNackUnmatchedInterest = true;
   Server server(face, "ndn:/NFS", prefixes);
   io.run();
 

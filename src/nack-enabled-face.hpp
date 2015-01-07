@@ -34,6 +34,10 @@ public: // producer
   void
   reply(const Nack& nack);
 
+  /** \brief whether to send NACK in response to unmatched Interest
+   */
+  bool shouldNackUnmatchedInterest;
+
 public: // consumer
   void
   request(const Interest& interest, const OnData& onData,

@@ -688,6 +688,7 @@ client_main(int argc, char* argv[])
 
   boost::asio::io_service io;
   NackEnabledFace face(io);
+  face.shouldNackUnmatchedInterest = true;
   OpsParser trace(std::cin);
   Client client(face, "ndn:/NFS", std::string("ndn:/") + argv[1]);
 
