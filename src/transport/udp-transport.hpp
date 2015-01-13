@@ -38,6 +38,7 @@ private:
   uint16_t m_localPort;
   boost::asio::ip::udp::endpoint m_ep;
   unique_ptr<boost::asio::ip::udp::socket> m_sock;
+  uint8_t m_buffer[ndn::MAX_NDN_PACKET_SIZE];
 };
 
 } // namespace ndn

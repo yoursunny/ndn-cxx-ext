@@ -74,12 +74,11 @@ void
 UdpTransport::startReceive()
 {
   BOOST_ASSERT(m_sock != nullptr);
-  static uint8_t buffer[ndn::MAX_NDN_PACKET_SIZE];
-  m_sock->async_receive(boost::asio::buffer(buffer, sizeof(buffer)),
-      [this, &buffer] (const boost::system::error_code& ec, size_t nTransferred) {
-        if (!ec && nTransferred) {
+  m_sock->async_receive(boost::asio::buffer(m_buffer, sizeof(m_buffer)),
+      [this] (const boost::system::error_code& ec, size_t nTransferred) {
+        if (!ec && nTransferred > 0) {
           Block element;
-          if (Block::fromBuffer(buffer, sizeof(buffer), element)) {
+          if (Block::fromBuffer(m_buffer, sizeof(m_buffer), element)) {
             this->receive(element);
           }
         }
