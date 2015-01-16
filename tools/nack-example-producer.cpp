@@ -1,4 +1,5 @@
 #include "nack-enabled-face.hpp"
+#include "util/face-trace-writer.hpp"
 #include <boost/lexical_cast.hpp>
 
 namespace ndn {
@@ -9,8 +10,14 @@ onInterest(NackEnabledFace& face, int nackCode, const Name& prefix, const Intere
 {
   std::cout << "INTEREST " << interest.getName() << std::endl;
 
-  Nack nack(static_cast<NackCode>(nackCode), interest);
-  face.reply(nack);
+  if (nackCode == -1) {
+    Data data(interest.getName());
+    face.reply(interest, data);
+  }
+  else {
+    Nack nack(static_cast<NackCode>(nackCode), interest);
+    face.reply(interest, nack);
+  }
 }
 
 int
@@ -23,6 +30,7 @@ main(int argc, char* argv[])
 
   boost::asio::io_service io;
   NackEnabledFace face(io);
+  util::FaceTraceWriter::connect(face);
 
   face.listen(Name(argv[1]), bind(&onInterest, ref(face), boost::lexical_cast<int>(argv[2]), _1, _2));
   io.run();

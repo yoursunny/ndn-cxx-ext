@@ -4,6 +4,7 @@
 #include "nack.hpp"
 #include <list>
 #include <ndn-cxx/face.hpp>
+#include <ndn-cxx/util/signal.hpp>
 
 namespace ndn {
 
@@ -29,10 +30,10 @@ public: // producer
   listen(const Name& prefix, const OnInterest& onInterest, bool wantRegister = true);
 
   void
-  reply(const Data& data);
+  reply(const Interest& interest, const Data& data);
 
   void
-  reply(const Nack& nack);
+  reply(const Interest& interest, const Nack& nack);
 
   /** \brief whether to send NACK in response to unmatched Interest
    */
@@ -43,6 +44,19 @@ public: // consumer
   request(const Interest& interest, const OnData& onData,
           const OnNack& onNack, const OnTimeout& onTimeout,
           const time::milliseconds& timeoutOverride = time::milliseconds::min());
+
+public: // trace
+  enum class TraceEventKind {
+    INTEREST_TO,
+    DATA_FROM,
+    NACK_FROM,
+    TIMEOUT_FROM,
+    INTEREST_FROM,
+    DATA_TO,
+    NACK_TO
+  };
+
+  util::signal::Signal<NackEnabledFace, TraceEventKind, Interest, NackCode> trace;
 
 private:
   struct PendingInterest

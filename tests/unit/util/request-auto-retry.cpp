@@ -15,10 +15,10 @@ BOOST_AUTO_TEST_CASE(NackTwice)
   int nReceiveInterest = 0;
   face2.listen("ndn:/A", [this, &nReceiveInterest] (const Name& prefix, const Interest& interest) {
     if (++nReceiveInterest >= 3) {
-      face2.reply(Data("ndn:/A/B/C"));
+      face2.reply(interest, Data("ndn:/A/B/C"));
     }
     else {
-      face2.reply(Nack(Nack::BUSY, interest));
+      face2.reply(interest, Nack(Nack::BUSY, interest));
     }
   });
 

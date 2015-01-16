@@ -1,4 +1,5 @@
 #include "nack-enabled-face.hpp"
+#include "util/face-trace-writer.hpp"
 
 namespace ndn {
 namespace nack_example_consumer {
@@ -34,6 +35,8 @@ main(int argc, char* argv[])
 
   boost::asio::io_service io;
   NackEnabledFace face(io);
+  util::FaceTraceWriter::connect(face);
+
   face.request(Name(argv[1]), &onData, &onNack, &onTimeout);
   io.run();
 

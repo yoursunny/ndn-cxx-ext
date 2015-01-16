@@ -29,12 +29,12 @@ protected:
         }
       }
       else {
-        face2.reply(Nack(Nack::NODATA, interest));
+        face2.reply(interest, Nack(Nack::NODATA, interest));
         return;
       }
       Data data(dataName);
       data.setFinalBlockId(finalBlockId);
-      face2.reply(data);
+      face2.reply(interest, data);
     });
   }
 

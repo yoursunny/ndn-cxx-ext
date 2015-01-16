@@ -75,7 +75,7 @@ NackEnabledFace::listen(const Name& prefix, const OnInterest& onInterest, bool w
 }
 
 void
-NackEnabledFace::reply(const Data& data)
+NackEnabledFace::reply(const Interest& interest, const Data& data)
 {
   if (!data.getSignature()) {
     // add fake signature
@@ -85,18 +85,21 @@ NackEnabledFace::reply(const Data& data)
     const_cast<Data&>(data).setSignature(fakeSignature);
   }
   m_transport->send(data.wireEncode());
+  this->trace(TraceEventKind::DATA_TO, interest, Nack::NONE);
 }
 
 void
-NackEnabledFace::reply(const Nack& nack)
+NackEnabledFace::reply(const Interest& interest, const Nack& nack)
 {
   Interest encoded = nack.encode();
   m_transport->send(encoded.wireEncode());
+  this->trace(TraceEventKind::NACK_TO, interest, nack.getCode());
 }
 
 void
 NackEnabledFace::onInterestTimeout(PendingInterestList::iterator it)
 {
+  this->trace(TraceEventKind::TIMEOUT_FROM, it->interest, Nack::NONE);
   if (it->onTimeout) {
     it->onTimeout(it->interest);
   }
@@ -129,6 +132,7 @@ NackEnabledFace::request(const Interest& interest, const OnData& onData,
                     bind(&NackEnabledFace::onInterestTimeout, this, it));
 
   m_transport->send(interest.wireEncode());
+  this->trace(TraceEventKind::INTEREST_TO, interest, Nack::NONE);
 }
 
 void
@@ -154,6 +158,7 @@ NackEnabledFace::onReceiveElement(const Block& block)
 void
 NackEnabledFace::onReceiveInterest(const Interest& interest)
 {
+  this->trace(TraceEventKind::INTEREST_FROM, interest, Nack::NONE);
   for (Listener& listener : m_listeners) {
     if (listener.prefix.isPrefixOf(interest.getName())) {
       listener.onInterest(listener.prefix, interest);
@@ -161,7 +166,7 @@ NackEnabledFace::onReceiveInterest(const Interest& interest)
     }
   }
   if (this->shouldNackUnmatchedInterest) {
-    this->reply(Nack(Nack::NODATA, interest));
+    this->reply(interest, Nack(Nack::NODATA, interest));
   }
 }
 
@@ -181,6 +186,7 @@ NackEnabledFace::onReceiveData(const Data& data)
   });
 
   for (auto&& pi : satisfied) {
+    this->trace(TraceEventKind::DATA_FROM, pi.interest, Nack::NONE);
     pi.onData(pi.interest, const_cast<Data&>(data));
   }
 }
@@ -205,6 +211,7 @@ NackEnabledFace::onReceiveNack(const Nack& nack)
   // invoke callback after PI is deleted from m_pendingInterests,
   // otherwise if callback expresses new Interest, remove_if would be affected
   for (auto&& pi : satisfied) {
+    this->trace(TraceEventKind::NACK_FROM, pi.interest, nack.getCode());
     pi.onNack(pi.interest, nack);
   }
 }

@@ -1,8 +1,9 @@
 #include "nack-enabled-face.hpp"
 #include "nfs-trace-common.hpp"
-#include "util/request-segments.hpp"
 #include <fstream>
 #include <unordered_set>
+#include "util/request-segments.hpp"
+#include "util/face-trace-writer.hpp"
 
 namespace ndn {
 namespace nfs_trace {
@@ -75,7 +76,7 @@ Server::processInterest(const Interest& interest)
 {
   if (!this->isServed(interest.getName())) {
     // not served by this server
-    m_face.reply(Nack(Nack::NODATA, interest));
+    m_face.reply(interest, Nack(Nack::NODATA, interest));
     return;
   }
 
@@ -133,7 +134,7 @@ Server::answerSimple(const Interest& interest, const std::vector<name::Component
   }
   Data data(dataName);
   data.setContent(m_payloadBuffer, std::min(payloadSize, sizeof(m_payloadBuffer)));
-  m_face.reply(data);
+  m_face.reply(interest, data);
 }
 
 void
@@ -184,6 +185,8 @@ server_main(int argc, char* argv[])
   boost::asio::io_service io;
   NackEnabledFace face(io);
   face.shouldNackUnmatchedInterest = true;
+  util::FaceTraceWriter::connect(face);
+
   Server server(face, "ndn:/NFS", prefixes);
   io.run();
 

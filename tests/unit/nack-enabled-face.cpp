@@ -11,7 +11,9 @@ BOOST_FIXTURE_TEST_SUITE(TestNackEnabledFace, FacePairFixture)
 BOOST_AUTO_TEST_CASE(RequestData)
 {
   bool hasData = false;
-  face2.listen("ndn:/A", bind([this] { face2.reply(Data("ndn:/A/B/C")); }));
+  face2.listen("ndn:/A", [this] (const Name& prefix, const Interest& interest) {
+    face2.reply(interest, Data("ndn:/A/B/C"));
+  });
 
   face1.request(Interest("ndn:/A/B"),
                 bind([&hasData] { hasData = true; }),
@@ -26,7 +28,7 @@ BOOST_AUTO_TEST_CASE(RequestNack)
 {
   bool hasNack = false;
   face2.listen("ndn:/A", [this] (const Name& prefix, const Interest& interest) {
-    face2.reply(Nack(Nack::BUSY, interest));
+    face2.reply(interest, Nack(Nack::BUSY, interest));
   });
 
   face1.request(Interest("ndn:/A/B"),
@@ -50,7 +52,7 @@ BOOST_AUTO_TEST_CASE(RequestTimeout)
                 bind([&hasTimeout] { hasTimeout = true; }));
 
   boost::asio::deadline_timer t(io, boost::posix_time::milliseconds(20));
-  t.async_wait([&io] (const boost::system::error_code&) { io.stop(); });
+  t.async_wait([this] (const boost::system::error_code&) { io.stop(); });
 
   io.run();
   BOOST_CHECK(hasTimeout);

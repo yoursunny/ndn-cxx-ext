@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(OpWrite)
                [this, &requestedSegments] (const Name& prefix, const Interest& interest) {
                  uint64_t segment = interest.getName().at(-1).toSegment();
                  requestedSegments.insert(segment);
-                 face1.reply(Data(interest.getName()));
+                 face1.reply(interest, Data(interest.getName()));
                });
 
   bool hasData = false;

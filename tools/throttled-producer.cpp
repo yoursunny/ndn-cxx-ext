@@ -55,13 +55,13 @@ private:
     if (!m_ren.shouldAccept(m_queue.size())) {
       LOG("REJECT " << interest.getName() << " queue=" << m_queue.size());
       Nack nack(Nack::BUSY, interest);
-      m_face.reply(nack);
+      m_face.reply(interest, nack);
       return;
     }
     LOG("ACCEPT " << interest.getName() << " queue=" << m_queue.size());
 
     bool isIdle = m_queue.empty();
-    m_queue.push(interest.getName());
+    m_queue.push(interest);
     if (isIdle) {
       this->startJob();
     }
@@ -78,7 +78,7 @@ private:
   startJob()
   {
     BOOST_ASSERT(!m_queue.empty());
-    const Name& name = m_queue.front();
+    const Name& name = m_queue.front().getName();
     time::milliseconds duration = this->extractDuration(name);
     LOG("START " << name << " duration=" << duration.count());
 
@@ -89,11 +89,11 @@ private:
   onJobFinish()
   {
     BOOST_ASSERT(!m_queue.empty());
-    LOG("FINISH " << m_queue.front() << " queue=" << (m_queue.size() - 1));
+    LOG("FINISH " << m_queue.front().getName() << " queue=" << (m_queue.size() - 1));
 
-    Data data(m_queue.front());
+    Data data(m_queue.front().getName());
     m_keyChain.signWithSha256(data);
-    m_face.reply(data);
+    m_face.reply(m_queue.front(), data);
     m_queue.pop();
 
     if (m_queue.empty()) {
@@ -107,7 +107,7 @@ private:
   NackEnabledFace& m_face;
   KeyChain m_keyChain;
   Scheduler& m_scheduler;
-  std::queue<Name> m_queue;
+  std::queue<Interest> m_queue;
   RandomEarlyNack& m_ren;
 };
 

@@ -13,7 +13,7 @@ getLoggerTimestamp();
 
 #define LOG(x) \
 do { \
-  std::cout << ::ndn::getLoggerTimestamp() << " " << x << std::endl; \
+  std::clog << ::ndn::getLoggerTimestamp() << " " << x << std::endl; \
 } while (0);
 
 #endif // NDNCXXEXT_UTIL_LOGGER_HPP

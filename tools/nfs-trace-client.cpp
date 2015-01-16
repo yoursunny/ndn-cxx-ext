@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <ndn-cxx/util/signal.hpp>
 #include "util/request-segments.hpp"
+#include "util/face-trace-writer.hpp"
 
 namespace ndn {
 namespace nfs_trace {
@@ -459,7 +460,7 @@ Client::processFetchInterest(const Interest& interest, const ServerAction& sa)
   if (it == m_writes.end()) {
     // not a WRITE in progress
     Nack nack(Nack::NODATA, interest);
-    m_face.reply(nack);
+    m_face.reply(interest, nack);
     return;
   }
 
@@ -469,7 +470,7 @@ Client::processFetchInterest(const Interest& interest, const ServerAction& sa)
 
   Data data(interest.getName());
   data.setContent(m_payloadBuffer, SEGMENT_SIZE);
-  m_face.reply(data);
+  m_face.reply(interest, data);
 
   if (wp.hasWriteReply && wp.fetchedSegments.size() == wp.op.nSegments) {
     this->finishWrite(fetchPrefix);
@@ -689,6 +690,8 @@ client_main(int argc, char* argv[])
   boost::asio::io_service io;
   NackEnabledFace face(io);
   face.shouldNackUnmatchedInterest = true;
+  util::FaceTraceWriter::connect(face);
+
   OpsParser trace(std::cin);
   Client client(face, "ndn:/NFS", std::string("ndn:/") + argv[1]);
 
