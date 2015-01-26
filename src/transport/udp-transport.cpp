@@ -89,13 +89,11 @@ UdpTransport::startReceive()
 void
 UdpTransport::pause()
 {
-  BOOST_ASSERT_MSG(false, "not implemented");
 }
 
 void
 UdpTransport::resume()
 {
-  BOOST_ASSERT_MSG(false, "not implemented");
 }
 
 } // namespace ndn
