@@ -43,7 +43,8 @@ void
 requestAutoRetry(NackEnabledFace& face, const Interest& interest,
                  const OnData& onData, const OnTimeout& onFail = nullptr,
                  const AutoRetryDecision& retryDecision = AutoRetryForever(),
-                 const time::milliseconds& retxInterval = time::milliseconds::min());
+                 const time::milliseconds& retxInterval = time::milliseconds::min(),
+                 const time::milliseconds& nackRetxDelay = time::milliseconds(200));
 
 } // namespace util
 } // namespace ndn

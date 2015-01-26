@@ -9,7 +9,8 @@ public:
   RequestAutoRetry(NackEnabledFace& face, const Interest& interest,
                    const OnData& onData, const OnTimeout& onFail,
                    const AutoRetryDecision& retryDecision,
-                   const time::milliseconds& retxInterval);
+                   const time::milliseconds& retxInterval,
+                   const time::milliseconds& nackRetxDelay);
 
 private:
   void
@@ -24,11 +25,6 @@ private:
   void
   handleTimeout();
 
-public:
-  /** \brief retains a self pointer, to be deleted after onData or onFail
-   */
-  unique_ptr<RequestAutoRetry> self;
-
 private:
   NackEnabledFace& m_face;
   int m_nSent;
@@ -37,13 +33,15 @@ private:
   OnTimeout m_onFail;
   AutoRetryDecision m_retryDecision;
   time::milliseconds m_retxInterval;
+  time::milliseconds m_nackRetxDelay;
 };
 
 
 RequestAutoRetry::RequestAutoRetry(NackEnabledFace& face, const Interest& interest,
                                    const OnData& onData, const OnTimeout& onFail,
                                    const AutoRetryDecision& retryDecision,
-                                   const time::milliseconds& retxInterval)
+                                   const time::milliseconds& retxInterval,
+                                   const time::milliseconds& nackRetxDelay)
   : m_face(face)
   , m_nSent(0)
   , m_interest(interest)
@@ -51,6 +49,7 @@ RequestAutoRetry::RequestAutoRetry(NackEnabledFace& face, const Interest& intere
   , m_onFail(onFail)
   , m_retryDecision(retryDecision)
   , m_retxInterval(retxInterval)
+  , m_nackRetxDelay(nackRetxDelay)
 {
   if (!static_cast<bool>(m_onData))
     m_onData = bind([]{});
@@ -79,18 +78,18 @@ void
 RequestAutoRetry::handleData(Data& data)
 {
   m_onData(m_interest, data);
-  self.reset();
+  delete this;
 }
 
 void
 RequestAutoRetry::handleNack(const Nack& nack)
 {
   if (m_retryDecision(m_nSent, false, nack.getCode())) {
-    this->sendInterest();
+    m_face.getScheduler().scheduleEvent(m_nackRetxDelay, [this] { this->sendInterest(); });
   }
   else {
     m_onFail(m_interest);
-    self.reset();
+    delete this;
   }
 }
 
@@ -102,7 +101,7 @@ RequestAutoRetry::handleTimeout()
   }
   else {
     m_onFail(m_interest);
-    self.reset();
+    delete this;
   }
 }
 
@@ -110,10 +109,11 @@ void
 requestAutoRetry(NackEnabledFace& face, const Interest& interest,
                  const OnData& onData, const OnTimeout& onFail,
                  const AutoRetryDecision& retryDecision,
-                 const time::milliseconds& retxInterval)
+                 const time::milliseconds& retxInterval,
+                 const time::milliseconds& nackRetxDelay)
 {
-  auto rar = new RequestAutoRetry(face, interest, onData, onFail, retryDecision, retxInterval);
-  rar->self.reset(rar);
+  new RequestAutoRetry(face, interest, onData, onFail, retryDecision,
+                       retxInterval, nackRetxDelay);
 }
 
 } // namespace util

@@ -25,6 +25,12 @@ public:
 
   ~NackEnabledFace();
 
+  Scheduler&
+  getScheduler()
+  {
+    return m_scheduler;
+  }
+
 public: // producer
   void
   listen(const Name& prefix, const OnInterest& onInterest, bool wantRegister = true);
