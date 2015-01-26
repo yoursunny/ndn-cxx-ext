@@ -11,7 +11,7 @@ namespace nfs_trace {
 using ndn::util::requestSegments;
 using ndn::util::AutoRetryLimited;
 
-class Server
+class Server : noncopyable
 {
 public:
   /** \param prefix Name prefix to register with forwarder

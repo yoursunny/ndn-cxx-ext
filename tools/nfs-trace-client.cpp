@@ -171,7 +171,7 @@ OpsParser::read()
   return {NfsTimestamp(), NFS_NONE, "", 0, 0, 0};
 }
 
-class Client
+class Client : noncopyable
 {
 public:
   /** \param serverPrefix Name prefix of NFS servers
@@ -303,7 +303,7 @@ Client::startOp(const NfsOp& op)
   case NFS_RMDIR:
   case NFS_RENAME:
     this->sendCommand(op, {name::Component("."), name::Component(NfsProcStrings[op.proc])},
-                      ServerAction{SA_SIMPLECMD, 0, 0}, false);
+                      ServerAction{SA_SIMPLECMD, 0, 0}, true);
     break;
   case NFS_ACCESS: // ignored
   default:
@@ -520,7 +520,7 @@ Client::expireWrites()
 
 /** \brief drives an emulation session
  */
-class EmulationRunner
+class EmulationRunner : noncopyable
 {
 public:
   EmulationRunner(OpsParser& trace, Client& client,
