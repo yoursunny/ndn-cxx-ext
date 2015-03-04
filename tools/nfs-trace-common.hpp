@@ -158,7 +158,7 @@ stripSignature(const Name& name)
   return name.getPrefix(-ndn::signed_interest::MIN_LENGTH);
 }
 
-static const int AUTO_RETRY_LIMIT = 3;
+static const int AUTO_RETRY_LIMIT = 10;
 static const time::milliseconds AUTO_RETRY_RETX_INTERVAL(2000);
 
 } // namespace nfs_trace
