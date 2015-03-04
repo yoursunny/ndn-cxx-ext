@@ -1,5 +1,6 @@
 #include "nack-enabled-face.hpp"
 #include "nfs-trace-common.hpp"
+#include <unordered_set>
 #include <unordered_map>
 #include <ndn-cxx/util/signal.hpp>
 #include "util/request-segments.hpp"
@@ -228,6 +229,9 @@ private: // WRITE
   processFetchInterest(const Interest& interest, const ServerAction& sa);
 
   void
+  sendFetchReply(const Interest& interest);
+
+  void
   finishWrite(const Name& fetchPrefix);
 
   /** \brief fail WRITEs where no fetch Interest has been received within FETCH_MAX_GAP
@@ -246,6 +250,7 @@ private:
   Name m_clientPrefix;
   uint8_t m_payloadBuffer[ndn::MAX_NDN_PACKET_SIZE];
   std::unordered_map<Name, WriteProcess> m_writes;
+  std::unordered_set<Name> m_completedWrites;
   static const int SEGMENT_SIZE = 4096;
   static const int DIR_PER_SEGMENT = 32;
   static const EmulationClock::Duration FETCH_MAX_GAP;
@@ -457,8 +462,16 @@ Client::processFetchInterest(const Interest& interest, const ServerAction& sa)
 {
   Name fetchPrefix = interest.getName().getPrefix(-1);
   auto it = m_writes.find(fetchPrefix);
-  if (it == m_writes.end()) {
-    // not a WRITE in progress
+  if (it == m_writes.end()) { // not a WRITE in progress
+
+    if (m_completedWrites.count(fetchPrefix) > 0) {
+      // It's necessary to keep m_completedWrites in order to answer Interests from NFS server
+      // for Data previously lost one client-switch link.
+      // XXX m_completedWrites grows indefinitely, but this won't be a problem for short traces.
+      this->sendFetchReply(interest);
+      return;
+    }
+
     Nack nack(Nack::NODATA, interest);
     m_face.reply(interest, nack);
     return;
@@ -468,13 +481,19 @@ Client::processFetchInterest(const Interest& interest, const ServerAction& sa)
   wp.lastFetch = EmulationClock::now();
   wp.fetchedSegments.insert(interest.getName().at(-1).toSegment());
 
-  Data data(interest.getName());
-  data.setContent(m_payloadBuffer, SEGMENT_SIZE);
-  m_face.reply(interest, data);
+  this->sendFetchReply(interest);
 
   if (wp.hasWriteReply && wp.fetchedSegments.size() == wp.op.nSegments) {
     this->finishWrite(fetchPrefix);
   }
+}
+
+void
+Client::sendFetchReply(const Interest& interest)
+{
+  Data data(interest.getName());
+  data.setContent(m_payloadBuffer, SEGMENT_SIZE);
+  m_face.reply(interest, data);
 }
 
 void
@@ -488,6 +507,7 @@ Client::finishWrite(const Name& fetchPrefix)
   NfsOp op = wp.op;
   EmulationTime wpStart = wp.start;
   m_writes.erase(it);
+  m_completedWrites.insert(fetchPrefix);
 
   std::stringstream params;
   params << m_clientHost << ':' << op.version << ':'
