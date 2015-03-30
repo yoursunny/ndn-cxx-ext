@@ -77,8 +77,10 @@ UdpTransport::startReceive()
   m_sock->async_receive(boost::asio::buffer(m_buffer, sizeof(m_buffer)),
       [this] (const boost::system::error_code& ec, size_t nTransferred) {
         if (!ec && nTransferred > 0) {
+          bool isOk = false;
           Block element;
-          if (Block::fromBuffer(m_buffer, sizeof(m_buffer), element)) {
+          std::tie(isOk, element) = Block::fromBuffer(m_buffer, sizeof(m_buffer));
+          if (isOk) {
             this->receive(element);
           }
         }
