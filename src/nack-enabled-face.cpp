@@ -128,7 +128,7 @@ NackEnabledFace::request(const Interest& interest, const OnData& onData,
     //     so that caller doesn't have to manage retx
     timeout = timeoutOverride;
   }
-  pi.timeoutEvent = m_scheduler.scheduleEvent(timeout,
+  pi.timeoutEvent = m_scheduler.schedule(timeout,
                     bind(&NackEnabledFace::onInterestTimeout, this, it));
 
   m_transport->send(interest.wireEncode());
@@ -178,7 +178,7 @@ NackEnabledFace::onReceiveData(const Data& data)
     if (!pi.interest.matchesData(data)) {
       return false;
     }
-    m_scheduler.cancelEvent(pi.timeoutEvent);
+    m_scheduler.cancel(pi.timeoutEvent);
     if (static_cast<bool>(pi.onData)) {
       satisfied.push_back(pi);
     }
@@ -199,7 +199,7 @@ NackEnabledFace::onReceiveNack(const Nack& nack)
   m_pendingInterests.remove_if([&] (PendingInterest& pi) -> bool {
     const Interest& i2 = pi.interest;
     if (i1.getName() == i2.getName() && i1.getSelectors() == i2.getSelectors()) {
-      m_scheduler.cancelEvent(pi.timeoutEvent);
+      m_scheduler.cancel(pi.timeoutEvent);
       if (static_cast<bool>(pi.onNack)) {
         satisfied.push_back(pi);
       }

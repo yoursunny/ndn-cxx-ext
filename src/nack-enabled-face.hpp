@@ -2,6 +2,7 @@
 #define NDNCXXEXT_NACK_ENABLED_FACE_HPP
 
 #include "nack.hpp"
+#include "util/scheduler.hpp"
 #include <list>
 #include <ndn-cxx/face.hpp>
 #include <ndn-cxx/util/signal.hpp>
@@ -25,7 +26,7 @@ public:
 
   ~NackEnabledFace();
 
-  Scheduler&
+  util::SchedulerBase&
   getScheduler()
   {
     return m_scheduler;
@@ -71,7 +72,7 @@ private:
     OnData onData;
     OnNack onNack;
     OnTimeout onTimeout;
-    EventId timeoutEvent;
+    util::SchedulerEventId timeoutEvent;
   };
   typedef std::list<PendingInterest> PendingInterestList;
 
@@ -100,7 +101,7 @@ private:
 private:
   boost::asio::io_service& m_io;
   boost::asio::io_service::work m_ioWork;
-  Scheduler m_scheduler;
+  util::SchedulerWrapper m_scheduler;
   unique_ptr<Transport> m_transport;
   KeyChain m_keyChain;
 
