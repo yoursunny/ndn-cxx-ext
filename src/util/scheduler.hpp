@@ -36,7 +36,7 @@ public:
            const scheduler::Scheduler::Event& f) NDNCXXEXT_DECL_OVERRIDE;
 
   virtual void
-  cancel(const SchedulerEventId& id)  NDNCXXEXT_DECL_OVERRIDE;
+  cancel(const SchedulerEventId& id) NDNCXXEXT_DECL_OVERRIDE;
 
 private:
   Scheduler m_scheduler;

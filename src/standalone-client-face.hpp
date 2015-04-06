@@ -5,9 +5,7 @@
 
 namespace ndn {
 
-typedef function<void(const Interest&, const Nack&)> OnNack;
-
-/** \brief NACK-enabled client face
+/** \brief Boost.Asio based ClientFace
  */
 class StandaloneClientFace : public ClientFace
 {
