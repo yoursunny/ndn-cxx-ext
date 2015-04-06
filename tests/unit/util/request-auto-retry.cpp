@@ -7,6 +7,7 @@ namespace ndn {
 namespace tests {
 
 using ndn::util::requestAutoRetry;
+using ndn::util::AutoRetryLimited;
 
 BOOST_FIXTURE_TEST_SUITE(TestRequestAutoRetry, FacePairFixture)
 
@@ -27,9 +28,12 @@ BOOST_AUTO_TEST_CASE(NackTwice)
   Interest interest("ndn:/A/B");
   requestAutoRetry(face1, Interest("ndn:/A/B"),
                    bind([&hasData] { hasData = true; }),
-                   bind([] { BOOST_ERROR("FAIL"); }));
+                   bind([] { BOOST_ERROR("FAIL"); }),
+                   AutoRetryLimited(4), time::milliseconds::min(), time::milliseconds(3));
 
-  io.poll();
+  face1.getScheduler().schedule(time::milliseconds(12), [&io] { io.stop(); });
+  io.run();
+
   BOOST_CHECK(hasData);
 }
 
