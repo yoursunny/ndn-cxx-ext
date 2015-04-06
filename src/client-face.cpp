@@ -1,71 +1,22 @@
-#include "nack-enabled-face.hpp"
+#include "client-face.hpp"
 #include "util/logger.hpp"
-#include "transport/udp-transport.hpp"
-#include <ndn-cxx/transport/tcp-transport.hpp>
-#include <ndn-cxx/management/nfd-control-command.hpp>
-#include <ndn-cxx/management/nfd-command-options.hpp>
 
 namespace ndn {
 
-NackEnabledFace::NackEnabledFace(boost::asio::io_service& io, std::string endpoint)
+ClientFace::ClientFace()
   : shouldNackUnmatchedInterest(false)
-  , m_io(io)
-  , m_ioWork(io)
-  , m_scheduler(io)
-{
-  if (endpoint.empty()) {
-    char* endpointEnv = getenv("FACE_ENDPOINT");
-    if (endpointEnv != nullptr) {
-      endpoint = endpointEnv;
-    }
-    if (endpoint.empty()) {
-      endpoint = "tcp4://127.0.0.1:6363";
-    }
-  }
-  ndn::util::FaceUri faceUri(endpoint);
-  if (faceUri.getScheme() == "tcp4") {
-    m_transport.reset(new TcpTransport(faceUri.getHost(), faceUri.getPort()));
-  }
-  else if (faceUri.getScheme() == "udp4") {
-    m_transport.reset(new UdpTransport(faceUri));
-  }
-  m_transport->connect(io, bind(&NackEnabledFace::onReceiveElement, this, _1));
-}
-
-NackEnabledFace::NackEnabledFace(boost::asio::io_service& io,
-                                 unique_ptr<Transport> transport)
-  : m_io(io)
-  , m_ioWork(io)
-  , m_scheduler(io)
-  , m_transport(std::move(transport))
-{
-  m_transport->connect(io, bind(&NackEnabledFace::onReceiveElement, this, _1));
-}
-
-NackEnabledFace::~NackEnabledFace()
 {
 }
 
-static inline void
-onRegisterFailure(const Name& prefix)
+ClientFace::~ClientFace()
 {
-  LOG("RibRegister timeout " << prefix);
 }
 
 void
-NackEnabledFace::listen(const Name& prefix, const OnInterest& onInterest, bool wantRegister)
+ClientFace::listen(const Name& prefix, const OnInterest& onInterest, bool wantRegister)
 {
-  nfd::RibRegisterCommand command;
-  static const Name COMMAND_PREFIX("/localhost/nfd");
-  Interest requestInterest;
-
   if (wantRegister) {
-    // register Interest prefix
-    nfd::ControlParameters parameters;
-    parameters.setName(prefix);
-    requestInterest.setName(command.getRequestName(COMMAND_PREFIX, parameters));
-    m_keyChain.sign(requestInterest);
-    this->request(requestInterest, bind([]{}), bind([]{}), bind(&onRegisterFailure, prefix));
+    this->registerPrefix(prefix);
   }
 
   m_listeners.push_back(Listener());
@@ -75,7 +26,7 @@ NackEnabledFace::listen(const Name& prefix, const OnInterest& onInterest, bool w
 }
 
 void
-NackEnabledFace::reply(const Interest& interest, const Data& data)
+ClientFace::reply(const Interest& interest, const Data& data)
 {
   if (!data.getSignature()) {
     // add fake signature
@@ -84,20 +35,20 @@ NackEnabledFace::reply(const Interest& interest, const Data& data)
                                           static_cast<const uint8_t*>(nullptr), 0));
     const_cast<Data&>(data).setSignature(fakeSignature);
   }
-  m_transport->send(data.wireEncode());
+
+  this->sendData(data);
   this->trace(TraceEventKind::DATA_TO, interest, Nack::NONE);
 }
 
 void
-NackEnabledFace::reply(const Interest& interest, const Nack& nack)
+ClientFace::reply(const Interest& interest, const Nack& nack)
 {
-  Interest encoded = nack.encode();
-  m_transport->send(encoded.wireEncode());
+  this->sendNack(nack);
   this->trace(TraceEventKind::NACK_TO, interest, nack.getCode());
 }
 
 void
-NackEnabledFace::onInterestTimeout(PendingInterestList::iterator it)
+ClientFace::onInterestTimeout(PendingInterestList::iterator it)
 {
   this->trace(TraceEventKind::TIMEOUT_FROM, it->interest, Nack::NONE);
   if (it->onTimeout) {
@@ -107,7 +58,7 @@ NackEnabledFace::onInterestTimeout(PendingInterestList::iterator it)
 }
 
 void
-NackEnabledFace::request(const Interest& interest, const OnData& onData,
+ClientFace::request(const Interest& interest, const OnData& onData,
                          const OnNack& onNack, const OnTimeout& onTimeout,
                          const time::milliseconds& timeoutOverride)
 {
@@ -128,35 +79,40 @@ NackEnabledFace::request(const Interest& interest, const OnData& onData,
     //     so that caller doesn't have to manage retx
     timeout = timeoutOverride;
   }
-  pi.timeoutEvent = m_scheduler.schedule(timeout,
-                    bind(&NackEnabledFace::onInterestTimeout, this, it));
+  pi.timeoutEvent = this->getScheduler().schedule(timeout,
+                    bind(&ClientFace::onInterestTimeout, this, it));
 
-  m_transport->send(interest.wireEncode());
+  this->sendInterest(interest);
   this->trace(TraceEventKind::INTEREST_TO, interest, Nack::NONE);
 }
 
 void
-NackEnabledFace::onReceiveElement(const Block& block)
+ClientFace::receiveElement(const Block& block)
 {
   if (block.type() == tlv::Interest) {
     Interest interest(block);
 
     Nack nack;
     if (nack.decode(interest)) {
-      this->onReceiveNack(nack);
+      this->receiveNack(nack);
     }
     else {
-      this->onReceiveInterest(interest);
+      this->receiveInterest(interest);
     }
   }
   else if (block.type() == tlv::Data) {
     Data data(block);
-    this->onReceiveData(data);
+    this->receiveData(data);
   }
 }
 
 void
-NackEnabledFace::onReceiveInterest(const Interest& interest)
+ClientFace::receiveInterestOrNack(const Interest& interest)
+{
+}
+
+void
+ClientFace::receiveInterest(const Interest& interest)
 {
   this->trace(TraceEventKind::INTEREST_FROM, interest, Nack::NONE);
   for (Listener& listener : m_listeners) {
@@ -171,14 +127,14 @@ NackEnabledFace::onReceiveInterest(const Interest& interest)
 }
 
 void
-NackEnabledFace::onReceiveData(const Data& data)
+ClientFace::receiveData(const Data& data)
 {
   PendingInterestList satisfied;
   m_pendingInterests.remove_if([&] (PendingInterest& pi) -> bool {
     if (!pi.interest.matchesData(data)) {
       return false;
     }
-    m_scheduler.cancel(pi.timeoutEvent);
+    this->getScheduler().cancel(pi.timeoutEvent);
     if (static_cast<bool>(pi.onData)) {
       satisfied.push_back(pi);
     }
@@ -192,14 +148,14 @@ NackEnabledFace::onReceiveData(const Data& data)
 }
 
 void
-NackEnabledFace::onReceiveNack(const Nack& nack)
+ClientFace::receiveNack(const Nack& nack)
 {
   const Interest& i1 = nack.getInterest();
   PendingInterestList satisfied;
   m_pendingInterests.remove_if([&] (PendingInterest& pi) -> bool {
     const Interest& i2 = pi.interest;
     if (i1.getName() == i2.getName() && i1.getSelectors() == i2.getSelectors()) {
-      m_scheduler.cancel(pi.timeoutEvent);
+      this->getScheduler().cancel(pi.timeoutEvent);
       if (static_cast<bool>(pi.onNack)) {
         satisfied.push_back(pi);
       }
@@ -214,6 +170,37 @@ NackEnabledFace::onReceiveNack(const Nack& nack)
     this->trace(TraceEventKind::NACK_FROM, pi.interest, nack.getCode());
     pi.onNack(pi.interest, nack);
   }
+}
+
+void
+ClientFace::sendInterest(const Interest& interest)
+{
+  this->sendInterestOrNack(interest);
+}
+
+void
+ClientFace::sendData(const Data& data)
+{
+  this->sendElement(data.wireEncode());
+}
+
+void
+ClientFace::sendNack(const Nack& nack)
+{
+  this->sendInterestOrNack(nack.encode());
+}
+
+void
+ClientFace::sendInterestOrNack(const Interest& interestOrNack)
+{
+  this->sendElement(interestOrNack.wireEncode());
+}
+
+void
+ClientFace::sendElement(const Block& block)
+{
+  BOOST_ASSERT(false); // override this, or sendInterestOrNack+sendData,
+                       // or sendInterest+sendData+sendNack
 }
 
 } // namespace ndn

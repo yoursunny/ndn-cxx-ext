@@ -6,7 +6,7 @@ namespace util {
 class RequestAutoRetry
 {
 public:
-  RequestAutoRetry(NackEnabledFace& face, const Interest& interest,
+  RequestAutoRetry(ClientFace& face, const Interest& interest,
                    const OnData& onData, const OnTimeout& onFail,
                    const AutoRetryDecision& retryDecision,
                    const time::milliseconds& retxInterval,
@@ -26,7 +26,7 @@ private:
   handleTimeout();
 
 private:
-  NackEnabledFace& m_face;
+  ClientFace& m_face;
   int m_nSent;
   Interest m_interest;
   OnData m_onData;
@@ -37,7 +37,7 @@ private:
 };
 
 
-RequestAutoRetry::RequestAutoRetry(NackEnabledFace& face, const Interest& interest,
+RequestAutoRetry::RequestAutoRetry(ClientFace& face, const Interest& interest,
                                    const OnData& onData, const OnTimeout& onFail,
                                    const AutoRetryDecision& retryDecision,
                                    const time::milliseconds& retxInterval,
@@ -85,7 +85,7 @@ void
 RequestAutoRetry::handleNack(const Nack& nack)
 {
   if (m_retryDecision(m_nSent, false, nack.getCode())) {
-    m_face.getScheduler().scheduleEvent(m_nackRetxDelay, [this] { this->sendInterest(); });
+    m_face.getScheduler().schedule(m_nackRetxDelay, [this] { this->sendInterest(); });
   }
   else {
     m_onFail(m_interest);
@@ -106,7 +106,7 @@ RequestAutoRetry::handleTimeout()
 }
 
 void
-requestAutoRetry(NackEnabledFace& face, const Interest& interest,
+requestAutoRetry(ClientFace& face, const Interest& interest,
                  const OnData& onData, const OnTimeout& onFail,
                  const AutoRetryDecision& retryDecision,
                  const time::milliseconds& retxInterval,

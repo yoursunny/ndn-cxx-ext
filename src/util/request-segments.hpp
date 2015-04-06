@@ -18,7 +18,7 @@ typedef std::function<void(Interest&)> EditInterest;
  *  \param editInterest a hook for editing the Interest before it's sent
  */
 void
-requestSegments(NackEnabledFace& face, const Name& baseName,
+requestSegments(ClientFace& face, const Name& baseName,
                 std::pair<uint64_t, uint64_t> segmentRange,
                 const OnData& onData = nullptr,
                 const std::function<void()>& onSuccess = nullptr,

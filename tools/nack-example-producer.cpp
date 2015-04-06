@@ -1,4 +1,4 @@
-#include "nack-enabled-face.hpp"
+#include "standalone-client-face.hpp"
 #include "util/face-trace-writer.hpp"
 #include <boost/lexical_cast.hpp>
 
@@ -6,7 +6,7 @@ namespace ndn {
 namespace nack_example_producer {
 
 static inline void
-onInterest(NackEnabledFace& face, int nackCode, const Name& prefix, const Interest& interest)
+onInterest(ClientFace& face, int nackCode, const Name& prefix, const Interest& interest)
 {
   std::cout << "INTEREST " << interest.getName() << std::endl;
 
@@ -29,7 +29,7 @@ main(int argc, char* argv[])
   }
 
   boost::asio::io_service io;
-  NackEnabledFace face(io);
+  StandaloneClientFace face(io);
   util::FaceTraceWriter::connect(face);
 
   face.listen(Name(argv[1]), bind(&onInterest, ref(face), boost::lexical_cast<int>(argv[2]), _1, _2));

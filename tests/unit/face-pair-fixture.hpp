@@ -2,6 +2,7 @@
 #define NDNCXXEXT_TESTS_FACE_PAIR_FIXTURE_HPP
 
 #include "transport-pair.hpp"
+#include "standalone-client-face.hpp"
 
 namespace ndn {
 namespace tests {
@@ -23,8 +24,8 @@ private:
   std::pair<unique_ptr<Transport>, unique_ptr<Transport>> m_transportPair;
 
 protected:
-  NackEnabledFace face1;
-  NackEnabledFace face2;
+  StandaloneClientFace face1;
+  StandaloneClientFace face2;
 };
 
 } // namespace tests

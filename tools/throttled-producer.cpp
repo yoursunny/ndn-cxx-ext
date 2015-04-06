@@ -6,7 +6,7 @@
  *  where (x >> 48) gives the processing duration of the request.
  */
 
-#include "nack-enabled-face.hpp"
+#include "standalone-client-face.hpp"
 #include "util/logger.hpp"
 #include <queue>
 #include <boost/lexical_cast.hpp>
@@ -39,7 +39,7 @@ boost::random::mt19937 RandomEarlyNack::s_gen;
 class ThrottledProducer : noncopyable
 {
 public:
-  ThrottledProducer(NackEnabledFace& face, Scheduler& scheduler,
+  ThrottledProducer(ClientFace& face, Scheduler& scheduler,
                     const Name& prefix, RandomEarlyNack& ren)
     : m_face(face)
     , m_scheduler(scheduler)
@@ -104,7 +104,7 @@ private:
   }
 
 private:
-  NackEnabledFace& m_face;
+  ClientFace& m_face;
   KeyChain m_keyChain;
   Scheduler& m_scheduler;
   std::queue<Interest> m_queue;
@@ -120,7 +120,7 @@ main(int argc, char* argv[])
   }
 
   boost::asio::io_service io;
-  NackEnabledFace face(io);
+  StandaloneClientFace face(io);
   Scheduler scheduler(io);
   RandomEarlyNack ren(boost::lexical_cast<size_t>(argv[2]), boost::lexical_cast<size_t>(argv[3]));
 

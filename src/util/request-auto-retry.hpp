@@ -2,7 +2,7 @@
 #define NDNCXXEXT_UTIL_REQUEST_AUTO_RETRY_HPP
 
 #include "common.hpp"
-#include "../nack-enabled-face.hpp"
+#include "../client-face.hpp"
 
 namespace ndn {
 namespace util {
@@ -40,7 +40,7 @@ private:
 /** \brief send an Interest repeatedly until a Data comes back
  */
 void
-requestAutoRetry(NackEnabledFace& face, const Interest& interest,
+requestAutoRetry(ClientFace& face, const Interest& interest,
                  const OnData& onData, const OnTimeout& onFail = nullptr,
                  const AutoRetryDecision& retryDecision = AutoRetryForever(),
                  const time::milliseconds& retxInterval = time::milliseconds::min(),

@@ -1,5 +1,5 @@
-#ifndef NDNCXXEXT_NACK_ENABLED_FACE_HPP
-#define NDNCXXEXT_NACK_ENABLED_FACE_HPP
+#ifndef NDNCXXEXT_CLIENT_FACE_HPP
+#define NDNCXXEXT_CLIENT_FACE_HPP
 
 #include "nack.hpp"
 #include "util/scheduler.hpp"
@@ -13,24 +13,16 @@ typedef function<void(const Interest&, const Nack&)> OnNack;
 
 /** \brief NACK-enabled client face
  */
-class NackEnabledFace : noncopyable
+class ClientFace : noncopyable
 {
 public:
-  explicit
-  NackEnabledFace(boost::asio::io_service& io,
-                  std::string endpoint = "");
+  ClientFace();
 
-  explicit
-  NackEnabledFace(boost::asio::io_service& io,
-                  unique_ptr<Transport> transport);
+  virtual
+  ~ClientFace();
 
-  ~NackEnabledFace();
-
-  util::SchedulerBase&
-  getScheduler()
-  {
-    return m_scheduler;
-  }
+  virtual util::SchedulerBase&
+  getScheduler() = 0;
 
 public: // producer
   void
@@ -63,7 +55,43 @@ public: // trace
     NACK_TO
   };
 
-  util::signal::Signal<NackEnabledFace, TraceEventKind, Interest, NackCode> trace;
+  util::signal::Signal<ClientFace, TraceEventKind, Interest, NackCode> trace;
+
+protected: // receive path
+  void
+  receiveElement(const Block& block);
+
+  void
+  receiveInterestOrNack(const Interest& interestOrNack);
+
+  void
+  receiveInterest(const Interest& interest);
+
+  void
+  receiveData(const Data& data);
+
+  void
+  receiveNack(const Nack& nack);
+
+private: // send path
+  virtual void
+  sendInterest(const Interest& interest);
+
+  virtual void
+  sendData(const Data& data);
+
+  virtual void
+  sendNack(const Nack& nack);
+
+  virtual void
+  sendInterestOrNack(const Interest& interestOrNack);
+
+  virtual void
+  sendElement(const Block& block);
+
+private: // management
+  virtual void
+  registerPrefix(const Name& prefix) = 0;
 
 private:
   struct PendingInterest
@@ -86,29 +114,11 @@ private:
   void
   onInterestTimeout(PendingInterestList::iterator it);
 
-  void
-  onReceiveElement(const Block& block);
-
-  void
-  onReceiveInterest(const Interest& interest);
-
-  void
-  onReceiveData(const Data& data);
-
-  void
-  onReceiveNack(const Nack& nack);
-
 private:
-  boost::asio::io_service& m_io;
-  boost::asio::io_service::work m_ioWork;
-  util::SchedulerWrapper m_scheduler;
-  unique_ptr<Transport> m_transport;
-  KeyChain m_keyChain;
-
   PendingInterestList m_pendingInterests;
   ListenerList m_listeners;
 };
 
 } // namespace ndn
 
-#endif // NDNCXXEXT_NACK_ENABLED_FACE_HPP
+#endif // NDNCXXEXT_CLIENT_FACE_HPP

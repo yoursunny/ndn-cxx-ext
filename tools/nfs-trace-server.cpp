@@ -1,4 +1,4 @@
-#include "nack-enabled-face.hpp"
+#include "standalone-client-face.hpp"
 #include "nfs-trace-common.hpp"
 #include <fstream>
 #include <unordered_set>
@@ -17,7 +17,7 @@ public:
   /** \param prefix Name prefix to register with forwarder
    *  \param prefixes Name prefix to serve
    */
-  Server(NackEnabledFace& face, const Name& prefix, const std::vector<Name>& prefixes);
+  Server(ClientFace& face, const Name& prefix, const std::vector<Name>& prefixes);
 
 private:
   bool
@@ -41,14 +41,14 @@ private:
   writeFetch(const Interest& interest);
 
 private:
-  NackEnabledFace& m_face;
+  ClientFace& m_face;
   const Name m_prefix;
   //const std::vector<Name> m_prefixes;
   const std::unordered_set<Name> m_prefixes;
   uint8_t m_payloadBuffer[ndn::MAX_NDN_PACKET_SIZE];
 };
 
-Server::Server(NackEnabledFace& face, const Name& prefix, const std::vector<Name>& prefixes)
+Server::Server(ClientFace& face, const Name& prefix, const std::vector<Name>& prefixes)
   : m_face(face)
   , m_prefix(prefix)
   //, m_prefixes(prefixes)
@@ -183,7 +183,7 @@ server_main(int argc, char* argv[])
   }
 
   boost::asio::io_service io;
-  NackEnabledFace face(io);
+  StandaloneClientFace face(io);
   face.shouldNackUnmatchedInterest = true;
   util::FaceTraceWriter::connect(face);
 

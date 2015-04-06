@@ -6,7 +6,7 @@ namespace util {
 class RequestSegments
 {
 public:
-  RequestSegments(NackEnabledFace& face, const Name& baseName,
+  RequestSegments(ClientFace& face, const Name& baseName,
                   std::pair<uint64_t, uint64_t> segmentRange, const OnData& onData,
                   const std::function<void()>& onSuccess, const OnTimeout& onFail,
                   const AutoRetryDecision& retryDecision,
@@ -35,7 +35,7 @@ public:
   unique_ptr<RequestSegments> self;
 
 private:
-  NackEnabledFace& m_face;
+  ClientFace& m_face;
   Name m_baseName;
   Name m_versionedName;
   std::pair<uint64_t, uint64_t> m_segmentRange;
@@ -50,7 +50,7 @@ private:
 };
 
 
-RequestSegments::RequestSegments(NackEnabledFace& face, const Name& baseName,
+RequestSegments::RequestSegments(ClientFace& face, const Name& baseName,
                                  std::pair<uint64_t, uint64_t> segmentRange, const OnData& onData,
                                  const std::function<void()>& onSuccess, const OnTimeout& onFail,
                                  const AutoRetryDecision& retryDecision,
@@ -157,7 +157,7 @@ RequestSegments::handleFail()
 }
 
 void
-requestSegments(NackEnabledFace& face, const Name& baseName,
+requestSegments(ClientFace& face, const Name& baseName,
                 std::pair<uint64_t, uint64_t> segmentRange, const OnData& onData,
                 const std::function<void()>& onSuccess, const OnTimeout& onFail,
                 const AutoRetryDecision& retryDecision,

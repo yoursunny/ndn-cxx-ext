@@ -1,4 +1,4 @@
-#include "nack-enabled-face.hpp"
+#include "standalone-client-face.hpp"
 #include "nfs-trace-common.hpp"
 #include <unordered_set>
 #include <unordered_map>
@@ -178,7 +178,7 @@ public:
   /** \param serverPrefix Name prefix of NFS servers
    *  \param clientHost prefix of this client host
    */
-  Client(NackEnabledFace& face, const Name& serverPrefix, const Name& clientHost);
+  Client(ClientFace& face, const Name& serverPrefix, const Name& clientHost);
 
   bool
   isIgnored(const NfsOp& op) const;
@@ -244,7 +244,7 @@ public:
   Signal<Client, NfsOp, EmulationTime, EmulationTime> opFailure;
 
 private:
-  NackEnabledFace& m_face;
+  ClientFace& m_face;
   Name m_serverPrefix;
   std::string m_clientHost;
   Name m_clientPrefix;
@@ -257,7 +257,7 @@ private:
 };
 const EmulationClock::Duration Client::FETCH_MAX_GAP = time::seconds(30);
 
-Client::Client(NackEnabledFace& face, const Name& serverPrefix, const Name& clientHost)
+Client::Client(ClientFace& face, const Name& serverPrefix, const Name& clientHost)
   : m_face(face)
   , m_serverPrefix(serverPrefix)
   , m_clientHost(clientHost.toUri())
@@ -708,7 +708,7 @@ client_main(int argc, char* argv[])
   // argv: client-name
 
   boost::asio::io_service io;
-  NackEnabledFace face(io);
+  StandaloneClientFace face(io);
   face.shouldNackUnmatchedInterest = true;
   util::FaceTraceWriter::connect(face);
 

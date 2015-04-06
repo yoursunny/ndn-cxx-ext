@@ -1,4 +1,4 @@
-#include "nack-enabled-face.hpp"
+#include "standalone-client-face.hpp"
 
 #include "boost-test.hpp"
 #include "face-pair-fixture.hpp"
@@ -6,7 +6,7 @@
 namespace ndn {
 namespace tests {
 
-BOOST_FIXTURE_TEST_SUITE(TestNackEnabledFace, FacePairFixture)
+BOOST_FIXTURE_TEST_SUITE(TestStandaloneClientFace, FacePairFixture)
 
 BOOST_AUTO_TEST_CASE(RequestData)
 {
