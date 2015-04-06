@@ -15,6 +15,14 @@
 #define NDNCXXEXT_PROTECTED_WITH_TESTS_ELSE_PRIVATE private
 #endif
 
+#ifdef NDNCXXEXT_HAVE_CXX_OVERRIDE_FINAL
+#define NDNCXXEXT_DECL_OVERRIDE override
+#define NDNCXXEXT_DECL_FINAL override
+#else
+#define NDNCXXEXT_DECL_OVERRIDE
+#define NDNCXXEXT_DECL_FINAL
+#endif
+
 #include <ndn-cxx/common.hpp>
 #include <ndn-cxx/util/scheduler.hpp>
 #include <ndn-cxx/security/key-chain.hpp>

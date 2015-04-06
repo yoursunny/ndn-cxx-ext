@@ -32,10 +32,11 @@ public:
   SchedulerWrapper(boost::asio::io_service& io);
 
   virtual SchedulerEventId
-  schedule(const time::nanoseconds& after, const scheduler::Scheduler::Event& f);
+  schedule(const time::nanoseconds& after,
+           const scheduler::Scheduler::Event& f) NDNCXXEXT_DECL_OVERRIDE;
 
   virtual void
-  cancel(const SchedulerEventId& id);
+  cancel(const SchedulerEventId& id)  NDNCXXEXT_DECL_OVERRIDE;
 
 private:
   Scheduler m_scheduler;

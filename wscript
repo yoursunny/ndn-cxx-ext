@@ -8,7 +8,7 @@ import os
 
 def options(opt):
     opt.load(['compiler_cxx', 'gnu_dirs'])
-    opt.load(['boost', 'default-compiler-flags'],
+    opt.load(['boost', 'default-compiler-flags', 'compiler-features'],
              tooldir=['.waf-tools'])
 
     opt.add_option('--with-tests', action='store_true', default=False,
@@ -18,7 +18,7 @@ def options(opt):
 
 def configure(conf):
     conf.load(['compiler_cxx', 'gnu_dirs',
-               'default-compiler-flags', 'boost'])
+               'default-compiler-flags', 'boost', 'compiler-features'])
 
     conf.env['WITH_TESTS'] = conf.options.with_tests
     conf.env['WITH_TOOLS'] = conf.options.with_tools
