@@ -8,7 +8,7 @@ namespace ndn {
 
 /** \brief represents a NACK packet
  */
-class Nack
+class Nack : public TagHost
 {
 public:
   enum NackCode {
