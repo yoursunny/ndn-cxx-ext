@@ -38,7 +38,7 @@ def configure(conf):
 
 def build(bld):
     libndn_cxx_ext = bld(
-        features=['cxx', 'cxxstlib'], # 'cxxshlib',
+        features=['cxx', 'cxxshlib'],
         target="ndn-cxx-ext",
         name="ndn-cxx-ext",
         source=bld.path.ant_glob('src/**/*.cpp'),
